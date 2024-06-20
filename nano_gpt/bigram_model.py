@@ -13,7 +13,6 @@ class BigramModel(nn.Module):
     def forward(self, idx, targets=None):
         # idx, targets both (B, T) tensor of ints
         logits = self.token_embedding_table(idx)  # (B, T, C)
-        loss = None
         if targets is None:
             loss = None
         else:

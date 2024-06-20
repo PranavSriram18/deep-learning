@@ -3,13 +3,15 @@ from data_loader import DataLoader
 import torch
 
 class Trainer:
-    def __init__(self, model: BigramModel, data_loader: DataLoader):
+    def __init__(self, model, data_loader: DataLoader):
         self.model = model
         self.loader = data_loader
 
-    def train(self, lr: float, batch_size: int, steps: int) -> None:
+    def train(self, lr: float, batch_size: int, steps: int, print_every: int) -> None:
         optimizer = torch.optim.AdamW(self.model.parameters(), lr=lr)
-        for _ in range(steps):
+        for i in range(steps):
+            if (i % print_every == 0):
+                self.print_sample()
             # sample a batch of data
             xb, yb = self.loader.get_batch('train')
 
@@ -33,4 +35,12 @@ class Trainer:
             out[split] = losses.mean()
         self.model.train()
         return out
+    
+    def print_sample(self, it):
+        print("Printing sample at train iter ")
+        print(
+            self.loader.decode(
+                self.model.generate(idx = torch.zeros((1, 1), dtype=torch.long), max_new_tokens=500)[0].tolist()
+            )
+        )
     
