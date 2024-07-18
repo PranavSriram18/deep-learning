@@ -1,9 +1,12 @@
+import torch  # type: ignore
+import torch.nn as nn  # type: ignore
+from typing import Dict
+
 from bigram_model import BigramModel
 from data_loader import DataLoader
-import torch
 
 class Trainer:
-    def __init__(self, model, data_loader: DataLoader):
+    def __init__(self, model: nn.Module, data_loader: DataLoader):
         self.model = model
         self.loader = data_loader
 
@@ -11,7 +14,7 @@ class Trainer:
         optimizer = torch.optim.AdamW(self.model.parameters(), lr=lr)
         for i in range(steps):
             if (i % print_every == 0):
-                self.print_sample()
+                self.print_sample(i)
             # sample a batch of data
             xb, yb = self.loader.get_batch('train')
 
@@ -23,7 +26,7 @@ class Trainer:
         print(loss.item())
 
     @torch.no_grad()
-    def estimate_loss(self, eval_iters: int):
+    def estimate_loss(self, eval_iters: int) -> Dict[str, float]:
         out = {}
         self.model.eval()
         for split in ['train', 'val']:
@@ -36,11 +39,11 @@ class Trainer:
         self.model.train()
         return out
     
-    def print_sample(self, it):
-        print("Printing sample at train iter ")
-        print(
-            self.loader.decode(
-                self.model.generate(idx = torch.zeros((1, 1), dtype=torch.long), max_new_tokens=500)[0].tolist()
-            )
-        )
+    def print_sample(self, it: int = None):
+        s = "\nPrinting sample"
+        s += f" at train iter {it}" if it else ":"
+        print(s, flush=True)
+        encoded = self.model.generate(
+            idx = torch.zeros((1, 1), dtype=torch.long), max_new_tokens=50)[0].tolist()
+        print(self.loader.decode(encoded), flush=True)
     

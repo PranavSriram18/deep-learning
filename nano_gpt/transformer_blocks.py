@@ -26,22 +26,23 @@ class Head(nn.Module):
         #   X is T x D; each row is a token emb
         #   W_k, W_q, W_v are D x H
         #   K = XW_k, Q = XW_q, V = XW_v are all T x H
-        B,T,D = X.shape
+        #   Each row of K is the key for a particular token
+        #   Each row of Q is the query for a particular token
+        B, T, D = X.shape
         k = self.key(X)  # (B, T, H)
         q = self.query(X)  # (B, T, H)
         v = self.value(X)  # (B, T, H)
-        # compute attention scores
-        # Ignoring batch dim, queries, keys are stored in rows. So attention
-        # is calculated as QK^T
+        
+        # (i, j) entry of att is how much ith token attends to jth token (pre-normalization)
+        # ith row of att is how much ith token attends to others (pre-normalization)
+        # jth col of att is how much jth token attended to by others
+        # thus, (i, j) entry must come from ith query, jth key. Hence QK^T
         att = q @ k.transpose(-2,-1) # (B, T, H) @ (B, H, T) -> (B, T, T)
         att = att * k.shape[-1]**-0.5  # normalize by sqrt of head size
-
-        # ignore batch dim for a moment, and consider last two dims of att
-        # ith row of att is how much ith token attends to others (pre-normalization)
-        # (i, j) entry is how much ith token attends to jth token (pre-normalization)
+        
         # mask so that tokens can't attend to future
         att = att.masked_fill(self.tril[:T, :T] == 0, float('-inf')) # (B, T, T)
-        # normalize along each row
+        # normalization is done along each row (amount ith attends must sum to 1)
         att = F.softmax(att, dim=-1) # (B, T, T)
         att = self.dropout(att)
         # ith row of output is convex combination of rows of value matrix,
@@ -59,6 +60,8 @@ class MultiHeadAttention(nn.Module):
         self.dropout = nn.Dropout(dropout)
 
     def forward(self, x):
+        # Each head of attention writes to a subspace of output
+        # (B, T, D) -> {cat[(B, T, H) (D/H) times} -> (B, T, D)
         out = torch.cat([h(x) for h in self.heads], dim=-1)
         out = self.dropout(self.proj(out))
         return out
@@ -76,6 +79,7 @@ class FeedFoward(nn.Module):
         )
 
     def forward(self, x):
+        # (B, T, D) -> (B, T, D)
         return self.net(x)
 
 class Block(nn.Module):
@@ -96,6 +100,7 @@ class Block(nn.Module):
         self.ln2 = nn.LayerNorm(D)
 
     def forward(self, x):
+        # (B, C, D) -> (B, C, D)
         # norm, attn, residual, norm, feedforward, residual
         x = x + self.attn(self.ln1(x))
         x = x + self.ffwd(self.ln2(x))

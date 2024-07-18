@@ -1,12 +1,12 @@
+import torch # type: ignore
+
 from bigram_model import BigramModel
 from trainer import Trainer
 from data_loader import DataLoader
 from transformer_model import TransformerModel
 
-import torch
-
 # To run: 
-# source ~/myenv/bin/activate
+# source ../../dl_env/bin/activate  (myenv is older one)
 # python run.py > out.txt
 
 # hyperparams
@@ -21,8 +21,9 @@ context_length = 8
 num_heads = 4
 num_layers = 4
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
+print_every = 1000
 
-if __name__=="__main__":
+def main():
     #model = BigramModel(vocab_size=vocab_size)
     model = TransformerModel(
         vocab_size=vocab_size,
@@ -37,12 +38,18 @@ if __name__=="__main__":
     data_loader = DataLoader(batch_size, context_length)
     print("Loaded data")
     trainer = Trainer(model, data_loader)
-
-    
-
     print("Sample before training:\n")
-    print_sample()
-    trainer.train(lr=learning_rate, batch_size=batch_size, steps=train_steps)
+    trainer.print_sample()
+    print("Starting training!")
+    trainer.train(
+        lr=learning_rate, 
+        batch_size=batch_size, 
+        steps=train_steps, 
+        print_every=print_every
+    )
     print("Sample after training:\n")
-    print_sample()
+    trainer.print_sample()
+
+if __name__=="__main__":
+    main()
     
