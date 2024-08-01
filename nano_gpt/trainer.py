@@ -44,6 +44,6 @@ class Trainer:
         s += f" at train iter {it}" if it else ":"
         print(s, flush=True)
         encoded = self.model.generate(
-            idx = torch.zeros((1, 1), dtype=torch.long), max_new_tokens=50)[0].tolist()
+            idx = torch.zeros((1, 1), dtype=torch.long), max_new_tokens=500)[0].tolist()
         print(self.loader.decode(encoded), flush=True)
     

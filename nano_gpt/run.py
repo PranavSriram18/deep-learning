@@ -9,19 +9,22 @@ from transformer_model import TransformerModel
 # source ../../dl_env/bin/activate  (myenv is older one)
 # python run.py > out.txt
 
-# hyperparams
+# train hyperparams
 batch_size = 32
 train_steps = 10000
 eval_interval = 300
 learning_rate = 1e-2
+print_every = 1000
+
+# model hyperparams
 vocab_size = 65  # from inspecting dataset
+ff_expansion = 4
 dropout = 0.0
 embedding_dim = 64
-context_length = 8
+context_length = 16
 num_heads = 4
-num_layers = 4
+num_layers = 12
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
-print_every = 1000
 
 def main():
     #model = BigramModel(vocab_size=vocab_size)
@@ -31,6 +34,7 @@ def main():
         context_length=context_length,
         num_heads=num_heads,
         num_layers=num_layers,
+        ff_expansion=ff_expansion,
         dropout=dropout,
         device=device
     )

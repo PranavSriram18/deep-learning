@@ -4,15 +4,14 @@ import torch.nn as nn # type: ignore
 from torch.nn import functional as F
 
 class Head(nn.Module):
-    """ One head of self-attention """
-
     """
+    One head of self-attention.
     H: head size 
     D: embedding dimension of X
     C: context length (block size)
     dropout: dropout parameter
     """
-    def __init__(self, H, D, C, dropout):
+    def __init__(self, H: int, D: int, C: int, dropout: float):
         super().__init__()
         self.key = nn.Linear(D, H, bias=False)
         self.query = nn.Linear(D, H, bias=False)
@@ -20,89 +19,95 @@ class Head(nn.Module):
         self.register_buffer('tril', torch.tril(torch.ones(C, C)))
         self.dropout = nn.Dropout(dropout)
 
-    def forward(self, X):
-        # Linear projections here are all (B, T, D) -> (B, T, H)
+    def forward(self, X: torch.tensor) -> torch.tensor:
+        # Linear projections here are all (B, C, D) -> (B, C, H)
         # Explanatory comments here will generally ignore the batch dim
-        #   X is T x D; each row is a token emb
+        #   X is C x D; each row is a token emb
         #   W_k, W_q, W_v are D x H
-        #   K = XW_k, Q = XW_q, V = XW_v are all T x H
+        #   K = XW_k, Q = XW_q, V = XW_v are all C x H
         #   Each row of K is the key for a particular token
         #   Each row of Q is the query for a particular token
-        B, T, D = X.shape
-        k = self.key(X)  # (B, T, H)
-        q = self.query(X)  # (B, T, H)
-        v = self.value(X)  # (B, T, H)
+        B, C, D = X.shape
+        K = self.key(X)  # (B, C, H)
+        Q = self.query(X)  # (B, C, H)
+        V = self.value(X)  # (B, C, H)
         
         # (i, j) entry of att is how much ith token attends to jth token (pre-normalization)
         # ith row of att is how much ith token attends to others (pre-normalization)
         # jth col of att is how much jth token attended to by others
         # thus, (i, j) entry must come from ith query, jth key. Hence QK^T
-        att = q @ k.transpose(-2,-1) # (B, T, H) @ (B, H, T) -> (B, T, T)
-        att = att * k.shape[-1]**-0.5  # normalize by sqrt of head size
+        att = Q @ K.transpose(-2,-1) # (B, T, H) @ (B, H, T) -> (B, T, T)
+        att /= K.shape[-1]**0.5  # normalize by sqrt(H)
         
         # mask so that tokens can't attend to future
-        att = att.masked_fill(self.tril[:T, :T] == 0, float('-inf')) # (B, T, T)
+        att = att.masked_fill(self.tril[:C, :C] == 0, float('-inf')) # (B, T, T)
         # normalization is done along each row (amount ith attends must sum to 1)
         att = F.softmax(att, dim=-1) # (B, T, T)
         att = self.dropout(att)
         # ith row of output is convex combination of rows of value matrix,
         # where weights of convex combination come from ith row of att
-        out = att @ v # (B, T, T) @ (B, T, H) -> (B, T, H)
+        out = att @ V # (B, T, T) @ (B, T, H) -> (B, T, H)
         return out
 
 class MultiHeadAttention(nn.Module):
     """ multiple heads of self-attention in parallel """
 
-    def __init__(self, num_heads, H, D, C, dropout):
+    def __init__(self, num_heads: int, H: int, D: int, C: int, dropout: float):
         super().__init__()
         self.heads = nn.ModuleList([Head(H, D, C, dropout) for _ in range(num_heads)])
         self.proj = nn.Linear(H * num_heads, D)
         self.dropout = nn.Dropout(dropout)
 
-    def forward(self, x):
+    def forward(self, X: torch.tensor) -> torch.tensor:
         # Each head of attention writes to a subspace of output
-        # (B, T, D) -> {cat[(B, T, H) (D/H) times} -> (B, T, D)
-        out = torch.cat([h(x) for h in self.heads], dim=-1)
+        # (B, C, D) -> {cat[(B, C, H) (D/H) times} -> (B, C, D)
+        out = torch.cat([h(X) for h in self.heads], dim=-1)
         out = self.dropout(self.proj(out))
         return out
 
 class FeedFoward(nn.Module):
-    """ a simple linear layer followed by a non-linearity """
-
-    def __init__(self, D, dropout):
+    """
+    A simple linear layer followed by a non-linearity.
+    (B, C, D) -> (B, C, D)
+    """
+    def __init__(self, D: int, ff_expansion: int = 4, dropout: float = 0.):
         super().__init__()
         self.net = nn.Sequential(
-            nn.Linear(D, 4 * D),
+            nn.Linear(D, ff_expansion * D),
             nn.ReLU(),
-            nn.Linear(4 * D, D),
+            nn.Linear(ff_expansion * D, D),
             nn.Dropout(dropout),
         )
 
-    def forward(self, x):
-        # (B, T, D) -> (B, T, D)
-        return self.net(x)
+    def forward(self, X: torch.tensor) -> torch.tensor:
+        # (B, C, D) -> (B, C, D)
+        return self.net(X)
 
 class Block(nn.Module):
-    """ Transformer block: communication followed by computation """
+    """
+    Transformer block: communication followed by computation.
+    (B, C, D) -> (B, C, D)
+    """
 
-    def __init__(self, D, n_head, C, dropout):
+    def __init__(self, D: int, n_head: int, C: int, ff_expansion: int = 4, dropout: float = 0.):
         """
         D: embedding dimension
         n_head: the number of heads we'd like
         C: context length
+        ff_expansion: ratio of hidden dim to input dim of feedforward block
         dropout: dropout parameter
         """
         super().__init__()
         H = D // n_head
         self.attn = MultiHeadAttention(n_head, H, D, C, dropout)
-        self.ffwd = FeedFoward(D, dropout)
+        self.ffwd = FeedFoward(D, ff_expansion, dropout)
         self.ln1 = nn.LayerNorm(D)
         self.ln2 = nn.LayerNorm(D)
 
-    def forward(self, x):
+    def forward(self, X: torch.tensor) -> torch.tensor:
         # (B, C, D) -> (B, C, D)
         # norm, attn, residual, norm, feedforward, residual
-        x = x + self.attn(self.ln1(x))
-        x = x + self.ffwd(self.ln2(x))
-        return x
+        X = X + self.attn(self.ln1(X))
+        X = X + self.ffwd(self.ln2(X))
+        return X
         
