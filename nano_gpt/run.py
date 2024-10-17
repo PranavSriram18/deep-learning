@@ -1,29 +1,28 @@
 import torch # type: ignore
 
-from bigram_model import BigramModel
-from trainer import Trainer
-from data_loader import DataLoader
-from transformer_model import TransformerModel
+from nano_gpt.bigram_model import BigramModel
+from nano_gpt.trainer import Trainer
+from nano_gpt.data_loader import DataLoader
+from nano_gpt.transformer_model import TransformerModel
 
-# To run: 
+# To run: from deep-learning directory:
 # source ../../dl_env/bin/activate  (myenv is older one)
-# python run.py > out.txt
+# python -m nano_gpt.run > out.txt
 
 # train hyperparams
 batch_size = 32
-train_steps = 10000
-eval_interval = 300
-learning_rate = 1e-2
-print_every = 1000
+train_steps = 2 ** 13 + 1
+learning_rate = 2e-3
+print_every = 256
 
 # model hyperparams
 vocab_size = 65  # from inspecting dataset
-ff_expansion = 4
+ff_expansion = 2
 dropout = 0.0
-embedding_dim = 64
-context_length = 16
-num_heads = 4
-num_layers = 12
+embedding_dim = 128
+context_length = 128
+num_heads = 16
+num_layers = 8
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 def main():
@@ -41,7 +40,10 @@ def main():
     print("Built model")
     data_loader = DataLoader(batch_size, context_length)
     print("Loaded data")
-    trainer = Trainer(model, data_loader)
+
+    sample_prompts = ["Julius: ", "On thy hands he wraithed. "]
+    trainer = Trainer(
+        model, data_loader, char_level_tokenize=True, sample_prompts=sample_prompts, sample_length=500)
     print("Sample before training:\n")
     trainer.print_sample()
     print("Starting training!")

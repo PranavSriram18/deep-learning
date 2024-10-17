@@ -3,7 +3,7 @@ import torch.nn as nn  # type: ignore
 from torch.nn import functional as F  # type: ignore
 from typing import Tuple
 
-from transformer_blocks import Block
+from nano_gpt.transformer_blocks import Block
 
 torch.manual_seed(1337)
 
@@ -33,7 +33,7 @@ class TransformerModel(nn.Module):
         # Maps tokens (R^V) to embeddings (R^D)
         self.token_embedding_table = nn.Embedding(self.V, self.D)
         # Maps positions (R^C) to embeddings (R^D)
-        self.position_embedding_table = nn.Embedding(self.V, self.D)  
+        self.position_embedding_table = nn.Embedding(self.C, self.D)  
         self.blocks = nn.Sequential(
             *[Block(self.D, self.num_heads, self.C, 
                     self.ff_expansion, self.dropout) for _ in range(
@@ -44,6 +44,8 @@ class TransformerModel(nn.Module):
     def forward(self, idx, targets=None) -> Tuple[torch.Tensor, torch.Tensor]:
         # idx and targets are both (B,C) tensor of integers
         B, C = idx.shape
+        if targets is not None:
+            assert(targets.shape == idx.shape)  # TODO - temp
         tok_emb = self.token_embedding_table(idx)  # (B, C, D)
         pos_emb = self.position_embedding_table(torch.arange(C, device=self.device))  # (C, D)
         x = tok_emb + pos_emb  # (B, C, D) (broadcast position embs across batch)
@@ -56,7 +58,7 @@ class TransformerModel(nn.Module):
         else:
             B, C, V = logits.shape
             logits = logits.view(B*C, V)
-            targets = targets.view(B*C)
+            targets = targets.reshape(B*C)
             loss = F.cross_entropy(logits, targets)
 
         return logits, loss
@@ -65,9 +67,9 @@ class TransformerModel(nn.Module):
         # idx is (B, T) array of indices in the current context
         for _ in range(max_new_tokens):
             # crop idx to the last context length tokens
-            idx_cond = idx[:, -self.C:]  # (B, C)
+            idx_cond = idx[:, -self.C:]  # (B, C') where C' = min(C, T)
             # get the predictions
-            logits, loss = self(idx_cond)  # (B, C, V)
+            logits, loss = self(idx_cond)  # (B, C', V)
             # focus only on the last time step
             logits = logits[:, -1, :] # becomes (B, V)
             # apply softmax to get probabilities
@@ -75,5 +77,6 @@ class TransformerModel(nn.Module):
             # sample from the distribution
             idx_next = torch.multinomial(probs, num_samples=1)  # (B, 1)
             # append sampled index to the running sequence
-            idx = torch.cat((idx, idx_next), dim=1)  # (B, C+1)
+            idx = torch.cat((idx, idx_next), dim=1)  # (B, C'+1)
         return idx
+    

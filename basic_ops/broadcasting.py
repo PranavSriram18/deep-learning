@@ -1,4 +1,5 @@
 import torch
+
 def can_broadcast(dims0, dims1) -> bool:
     for dim0, dim1 in zip(reversed(dims0), reversed(dims1)):
         if dim0 != dim1 and dim0 != 1 and dim1 != 1:

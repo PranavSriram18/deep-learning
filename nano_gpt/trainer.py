@@ -1,29 +1,44 @@
 import torch  # type: ignore
 import torch.nn as nn  # type: ignore
-from typing import Dict
+from typing import Dict, List
 
-from bigram_model import BigramModel
-from data_loader import DataLoader
+from nano_gpt.data_loader import DataLoader
+from nano_gpt.generator import Generator
 
 class Trainer:
-    def __init__(self, model: nn.Module, data_loader: DataLoader):
+    # TODO - fix type of data_loader
+    def __init__(
+            self, 
+            model: nn.Module, 
+            data_loader: DataLoader, 
+            char_level_tokenize: bool,
+            sample_prompts: List[str],
+            sample_length: int = 500):
         self.model = model
         self.loader = data_loader
+        self.char_level_tokenize = char_level_tokenize
+        self.generator = Generator(self.model, self.loader, self.char_level_tokenize, sample_prompts)
+        self.sample_length = sample_length
 
     def train(self, lr: float, batch_size: int, steps: int, print_every: int) -> None:
+        print("In Trainer::train", flush=True)
         optimizer = torch.optim.AdamW(self.model.parameters(), lr=lr)
         for i in range(steps):
-            if (i % print_every == 0):
-                self.print_sample(i)
             # sample a batch of data
-            xb, yb = self.loader.get_batch('train')
+            xb, yb = self.loader.get_batch('train')  # BxC, BxC
+            if i == 0:
+                print("Successfully got batch", flush=True)
+                print(f"xb shape: {xb.shape}")
+                print(f"yb shape: {yb.shape}")
 
             # evaluate the loss
             logits, loss = self.model(xb, yb)
+            if (i % print_every == 0):
+                print("Got loss", flush=True)
+                self.print_sample(i, loss.item())
             optimizer.zero_grad(set_to_none=True)
             loss.backward()
             optimizer.step()
-        print(loss.item())
 
     @torch.no_grad()
     def estimate_loss(self, eval_iters: int) -> Dict[str, float]:
@@ -39,11 +54,11 @@ class Trainer:
         self.model.train()
         return out
     
-    def print_sample(self, it: int = None):
-        s = "\nPrinting sample"
-        s += f" at train iter {it}" if it else ":"
-        print(s, flush=True)
-        encoded = self.model.generate(
-            idx = torch.zeros((1, 1), dtype=torch.long), max_new_tokens=500)[0].tolist()
-        print(self.loader.decode(encoded), flush=True)
+    def print_sample(self, it: int|None = None, loss: float|None = None):
+        if it is not None:
+            print(f"At training iteration {it}.\nLoss: {loss}")
+        print("\nPrinting sample...", flush=True)
+        # TODO - make this compatible w the character-level model too
+        # TODO - make generator case insensitive
+        self.generator.generate_from_prompts(self.sample_length)
     
