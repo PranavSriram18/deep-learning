@@ -6,13 +6,13 @@ from nano_gpt.chunked_transformer import ChunkedTransformer  # type: ignore
 
 # To run: from deep-learning directory:
 # source ../../dl_env/bin/activate  (myenv is older one)
-# code chunked_out2.txt && python -m nano_gpt.run_chunked > chunked_out2.txt
+# code chunked_out3.txt && python -m nano_gpt.run_chunked > chunked_out3.txt
 
 # train hyperparams
 batch_size = 32
-train_steps = 2 ** 13 + 1
 learning_rate = 2e-3
 print_every = 256
+train_steps = 8 * print_every + 1 # TODO - restore to 2 ** 13 + 1
 
 # model hyperparams
 vocab_size = 65  # from inspecting dataset
@@ -23,6 +23,9 @@ context_length = 256
 num_heads = 8
 num_layers = 8
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
+
+# torch settings
+torch.set_printoptions(precision=3, sci_mode=False)
 
 def main():
     model = ChunkedTransformer(
@@ -39,7 +42,7 @@ def main():
 
     prompt_1 = """Be not her maid, since she is envious; her vestal livery is but sick and green, and none but fools do wear it. Cast it off! It is my lady; O, it is my love! O that she knew she were! She speaks, yet she says nothing. What of that? Her eye discourses; I will answer it. I am too bold; 'tis not to me she speaks"""
 
-    sample_prompts = [prompt_0, prompt_1]
+    sample_prompts = [prompt_0]  # TODO - add back prompt_1
     trainer = Trainer(
         model, 
         data_loader, 

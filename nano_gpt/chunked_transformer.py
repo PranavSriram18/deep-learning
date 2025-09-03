@@ -82,7 +82,7 @@ class ChunkedTransformer(nn.Module):
         pos_emb = self.pos_emb(torch.arange(C, device=idx.device))  # C x D
         x = tok_emb + pos_emb  # BxCxD
         x = self.att1(x)  # BxkxD
-        x = self.mlp1(x)  # BxkxD
+        x = x + self.mlp1(x)  # BxkxD
         x = self.regular_atts(x)  # BxkxD
         x = self.ln_f(x)
         logits = self.lm_head(x)  # BxkxV
@@ -100,7 +100,7 @@ class ChunkedTransformer(nn.Module):
     
     def generate(self, idx, max_new_tokens) -> torch.Tensor:
         # idx is (B, C) array of indices in the current context
-        for _ in range(max_new_tokens):
+        for step in range(max_new_tokens):
             # Handle input padding/truncation
             B, C = idx.shape
             if C < self.C:
@@ -115,6 +115,8 @@ class ChunkedTransformer(nn.Module):
             # focus only on the last time step and sample
             logits = logits[:, -1, :]  # (B, V)
             probs = F.softmax(logits, dim=-1)  # (B, V)
+            if step % 32 == 0:
+                print(f"Probs: {probs}")
             idx_next = torch.multinomial(probs, num_samples=1)  # (B, 1)
             # append sampled index to the running sequence
             idx = torch.cat((idx, idx_next), dim=1)  # (B, C+1)

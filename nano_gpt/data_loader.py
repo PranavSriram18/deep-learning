@@ -1,5 +1,6 @@
 import torch  # type: ignore
 import torch.nn as nn  # type: ignore
+from collections import Counter
 from typing import List, Tuple
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -10,6 +11,9 @@ class DataLoader:
         self.block_size = block_size
         with open("nano_gpt/input.txt", 'r', encoding='utf8') as f:
             self.text = f.read()
+        c = Counter(self.text)
+        print(f"Char freqs:\n {c}")
+
         self.itos = sorted(list(set(self.text)))  # index -> char
         print(f"Character set: {self.itos}")
         self.stoi = { ch:i for i, ch in enumerate(self.itos) }  # char -> index

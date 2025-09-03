@@ -21,8 +21,8 @@ ff_expansion = 2
 dropout = 0.0
 embedding_dim = 128
 context_length = 128
-num_heads = 16
-num_layers = 8
+num_heads = 8
+num_layers = 12
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 def main():

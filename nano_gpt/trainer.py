@@ -13,7 +13,7 @@ class Trainer:
             data_loader: DataLoader, 
             char_level_tokenize: bool,
             sample_prompts: List[str],
-            sample_length: int = 500):
+            sample_length: int = 512):
         self.model = model
         self.loader = data_loader
         self.char_level_tokenize = char_level_tokenize
@@ -34,6 +34,7 @@ class Trainer:
             # evaluate the loss
             logits, loss = self.model(xb, yb)
             if (i % print_every == 0):
+                print(f"Logits on sample 0: {logits[0]}")
                 print("Got loss", flush=True)
                 self.print_sample(i, loss.item())
             optimizer.zero_grad(set_to_none=True)

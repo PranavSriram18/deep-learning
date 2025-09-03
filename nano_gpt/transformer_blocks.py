@@ -106,7 +106,7 @@ class Block(nn.Module):
 
     def forward(self, X: torch.tensor) -> torch.tensor:
         # (B, C, D) -> (B, C, D)
-        # norm, attn, residual, norm, feedforward, residual
+        # {norm, op, residual} for op in {attn, ff}
         X = X + self.attn(self.ln1(X))
         X = X + self.ffwd(self.ln2(X))
         return X
