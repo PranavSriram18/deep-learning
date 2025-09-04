@@ -6,6 +6,10 @@ class TransformerType(Enum):
     BASIC = "basic"
     BASIC_SPARSE_ATTENTION = "basic_sparse_attention"
 
+class DatasetType(Enum):
+    WT2_WORD = "wt2_word"
+    SHAKESPEARE = "shakespeare"
+
 @dataclass
 class ModelConfig:
     # Training hyperparameters
@@ -25,3 +29,4 @@ class ModelConfig:
     transformer_type: TransformerType = TransformerType.BASIC
     alpha: float = 4.0
     t: int = 24
+    tie_embeddings: bool = True

@@ -5,7 +5,7 @@ from typing import List, Tuple
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
-class DataLoader:
+class ShakespeareDataLoader:
     def __init__(self, batch_size: int, block_size: int):
         self.batch_size = batch_size
         self.block_size = block_size

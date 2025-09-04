@@ -91,5 +91,9 @@ class Trainer:
         if it is not None:
             print(f"At training iteration {it}. Loss: {loss:.4f}")
         print("\nPrinting sample...", flush=True)
-        # Generator should call model.generate(), which is device-aware in your model
-        self.generator.generate_from_prompts(self.sample_length)
+        # Generator calls model.generate(), which is device-aware
+        outs = self.generator.generate_from_prompts(self.sample_length, display=False)
+        is_word_level = not self.char_level_tokenize
+        for out in outs:
+            text = " ".join(out) if is_word_level else "".join(out)
+            print(f"\n{text}\n", flush=True)

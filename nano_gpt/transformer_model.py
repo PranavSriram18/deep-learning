@@ -45,7 +45,16 @@ class TransformerModel(nn.Module):
             raise ValueError(f"Unknown transformer type: {self.transformer_type}")
             
         self.ln_f = nn.LayerNorm(self.D)
-        self.lm_head = nn.Linear(self.D, self.V)
+        self.lm_head = nn.Linear(self.D, self.V, bias=False)
+        # Optional weight tying controlled by config
+        tie = getattr(config, "tie_embeddings", True)
+        if tie:
+            if self.lm_head.weight.shape != self.token_embedding_table.weight.shape:
+                raise ValueError(
+                    f"Cannot tie embeddings: head {tuple(self.lm_head.weight.shape)} "
+                    f"!= embed {tuple(self.token_embedding_table.weight.shape)}"
+                )
+            self.lm_head.weight = self.token_embedding_table.weight
 
 
     def forward(
