@@ -1,6 +1,6 @@
 # nano_gpt/run.py
 from dataclasses import dataclass
-from nano_gpt.model_config import DatasetType, ModelConfig, TransformerType
+from nano_gpt.model_config import DatasetType, ModelConfig, TransformerType, wt2_word_config
 import torch  # type: ignore
 
 from nano_gpt.trainer import Trainer
@@ -15,7 +15,10 @@ sample_length = 500
 sample_prompts = ["Julius: ", "On thy hands he wraithed. "]
 
 def run_transformer(transformer_type: TransformerType, dataset_type: DatasetType):
-    cfg = ModelConfig(transformer_type=transformer_type)
+    if transformer_type == TransformerType.BASIC:
+        cfg = ModelConfig(transformer_type=transformer_type)
+    else:
+        cfg = wt2_word_config()
 
     if torch.cuda.is_available():
         torch.set_float32_matmul_precision("high")
@@ -38,7 +41,7 @@ def run_transformer(transformer_type: TransformerType, dataset_type: DatasetType
     print("Loaded data")
 
     model = TransformerModel(config=cfg).to(device)
-    print("Built model")
+    print(f"Built model with config {cfg}")
 
     trainer = Trainer(
         model=model,

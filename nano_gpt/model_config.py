@@ -30,3 +30,22 @@ class ModelConfig:
     alpha: float = 4.0
     t: int = 24
     tie_embeddings: bool = True
+
+def wt2_word_config() -> ModelConfig:
+    return ModelConfig(
+        batch_size=8,
+        vocab_size=50000,
+        learning_rate=1e-3,
+        print_every=128,
+        train_steps=1024 * 8 + 1,
+        context_length=64,
+        embedding_dim=256,
+        num_heads=8,
+        num_layers=12,
+        ff_expansion=2,
+        dropout=0.0,
+        transformer_type=TransformerType.BASIC_SPARSE_ATTENTION,
+        alpha=4.0,
+        t=16,
+        tie_embeddings=True
+    )
