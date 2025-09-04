@@ -23,7 +23,6 @@ embedding_dim = 128
 context_length = 128
 num_heads = 8
 num_layers = 12
-device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 def main():
     #model = BigramModel(vocab_size=vocab_size)
@@ -35,7 +34,6 @@ def main():
         num_layers=num_layers,
         ff_expansion=ff_expansion,
         dropout=dropout,
-        device=device
     )
     print("Built model")
     data_loader = DataLoader(batch_size, context_length)
