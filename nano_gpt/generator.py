@@ -1,39 +1,53 @@
-import torch  # type: ignore
-import torch.nn as nn  # type: ignore
-from typing import Dict, List
+import torch
+import torch.nn as nn
+from typing import List, Optional
 
-from nano_gpt.bigram_model import BigramModel
 from nano_gpt.data_loader import DataLoader
 
 class Generator:
-    # TODO - fix the type signature
     def __init__(
-            self, 
-            model: nn.Module, 
-            loader: DataLoader, 
-            char_level_chunk: bool,
-            sample_prompts: List[str]):
+        self,
+        model: nn.Module,
+        loader: DataLoader,
+        char_level_tokenize: bool,         # (renamed for clarity)
+        sample_prompts: List[str],
+    ):
         self.model = model
         self.loader = loader
-        self.char_level_chunk = char_level_chunk
+        self.char_level_tokenize = char_level_tokenize
         self.prompts = sample_prompts
 
+    # ----- helpers -----
+    def _device(self) -> torch.device:
+        # derive from model parameters — single source of truth
+        return next(self.model.parameters()).device
+
+    def _to_idx(self, prompt: str) -> torch.Tensor:
+        if self.char_level_tokenize:
+            ids = self.loader.encode(list(prompt))
+        else:
+            ids = self.loader.encode(prompt.split(" "))
+        # ensure Long dtype for embeddings and correct device
+        return torch.tensor(ids, dtype=torch.long, device=self._device())
+
+    # ----- public API -----
     def generate(self, prompt: str, max_new_tokens: int) -> List[str]:
-        idx = self.to_idx(prompt)  # length T vector, where T is number of tokens in prompt
-        idx = idx.unsqueeze(0)  # 1xT, since model expects a batch dimension
-        encoded = self.model.generate(idx=idx, max_new_tokens=max_new_tokens)[0]
-        return self.loader.decode(encoded.tolist())
-    
+        was_training = self.model.training
+        self.model.eval()
+        with torch.inference_mode():
+            idx = self._to_idx(prompt).unsqueeze(0)        # (1, T) on model device
+            encoded = self.model.generate(idx, max_new_tokens)[0]  # (T+...)
+            tokens = encoded.tolist()
+        if was_training:
+            self.model.train()
+        return self.loader.decode(tokens)
+
     def generate_from_prompts(self, max_new_tokens: int, display: bool = True) -> List[List[str]]:
-        ret = [self.generate(prompt, max_new_tokens) for prompt in self.prompts]
+        outs: List[List[str]] = []
+        for p in self.prompts:
+            outs.append(self.generate(p, max_new_tokens))
         if display:
             print("Generated sample: ")
-            for out in ret:
+            for out in outs:
                 print(f"\n {out} \n", flush=True)
-        return ret
-        
-    def to_idx(self, prompt: str) -> torch.Tensor:
-        if self.char_level_chunk:
-            return torch.tensor(self.loader.encode(list(prompt)))
-        else:
-            return torch.tensor(self.loader.encode(prompt.split(" ")))
+        return outs
