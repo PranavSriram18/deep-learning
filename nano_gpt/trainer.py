@@ -2,14 +2,16 @@ import torch
 import torch.nn as nn
 from typing import Dict, List, Optional
 
-from nano_gpt.data_loader import DataLoader
+from nano_gpt.data_loader import ShakespeareDataLoader
+from nano_gpt.data_wt2_word import WT2WordDataLoader
+
 from nano_gpt.generator import Generator
 
 class Trainer:
     def __init__(
         self,
         model: nn.Module,
-        data_loader: DataLoader,
+        data_loader: ShakespeareDataLoader | WT2WordDataLoader,  # TODO - make a base class for this
         char_level_tokenize: bool,
         sample_prompts: List[str],
         sample_length: int = 512,
