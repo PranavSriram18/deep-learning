@@ -28,8 +28,8 @@ class Trainer:
         # but we keep a handle here anyway.
         self.generator = Generator(self.model, self.loader, self.char_level_tokenize, sample_prompts)
 
-        # AMP scaler (safe on CPU; it’s a no-op there)
-        self.scaler = torch.cuda.amp.GradScaler(enabled=self.use_amp)
+        # AMP scaler (no-op when enabled=False)
+        self.scaler = torch.amp.GradScaler(enabled=self.use_amp)
 
     def train(self, lr: float, batch_size: int, steps: int, print_every: int) -> None:
         print("In Trainer::train", flush=True)
@@ -52,7 +52,7 @@ class Trainer:
             optimizer.zero_grad(set_to_none=True)
 
             if self.use_amp:
-                with torch.cuda.amp.autocast():
+                with torch.amp.autocast(device_type="cuda"):
                     logits, loss = self.model(xb, yb)
                 self.scaler.scale(loss).backward()
                 self.scaler.step(optimizer)
@@ -78,7 +78,7 @@ class Trainer:
                 X = X.to(self.device, non_blocking=True)
                 Y = Y.to(self.device, non_blocking=True)
                 if self.use_amp:
-                    with torch.cuda.amp.autocast():
+                    with torch.amp.autocast(device_type="cuda"):
                         _, loss = self.model(X, Y)
                 else:
                     _, loss = self.model(X, Y)

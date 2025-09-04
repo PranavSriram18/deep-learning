@@ -19,12 +19,12 @@ class ModelConfig:
     vocab_size: int = 65
     ff_expansion: int = 2
     dropout: float = 0.0
-    embedding_dim: int = 128
-    context_length: int = 128
+    embedding_dim: int = 128  # D
+    context_length: int = 128  # C
     num_heads: int = 8
-    num_layers: int = 12
+    num_layers: int = 12  # L
 
-# Sampling controls (not part of ModelConfig per request)
+# Sampling controls
 sample_length = 500
 sample_prompts = ["Julius: ", "On thy hands he wraithed. "]
 
