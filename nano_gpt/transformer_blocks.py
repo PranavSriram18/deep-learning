@@ -1,7 +1,7 @@
 
 import torch # type: ignore
 import torch.nn as nn # type: ignore
-from torch.nn import functional as F
+from torch.nn import functional as F # type: ignore
 
 class Head(nn.Module):
     """
@@ -60,7 +60,7 @@ class MultiHeadAttention(nn.Module):
         self.dropout = nn.Dropout(dropout)
 
     def forward(self, X: torch.tensor) -> torch.tensor:
-        # Each head of attention writes to a disjoint subspace of output
+        # Each head of attention writes to a disjoint subspace first, then we mix
         # (B, C, D) -> {cat[(B, C, H) (D/H) times} -> (B, C, D)
         out = torch.cat([h(X) for h in self.heads], dim=-1)
         out = self.dropout(self.proj(out))

@@ -1,39 +1,49 @@
-import torch
-import torch.nn as nn
-from torch.nn import functional as F
+import torch  # type: ignore
+import torch.nn as nn  # type: ignore
+from torch.nn import functional as F  # type: ignore
 from typing import Optional, Tuple
 
 from nano_gpt.transformer_blocks import Block
+from nano_gpt.basic_sparse_attention import BasicSparseTransformerBlock
+from nano_gpt.model_config import ModelConfig, TransformerType
 
 torch.manual_seed(1337)
+
 
 class TransformerModel(nn.Module):
     def __init__(
         self,
-        vocab_size: int,
-        embedding_dim: int,
-        context_length: int,
-        num_heads: int,
-        num_layers: int,
-        ff_expansion: int = 4,
-        dropout: float = 0.0,
+        config: ModelConfig,
     ):
         super().__init__()
-        self.V = vocab_size
-        self.D = embedding_dim
-        self.C = context_length
-        self.num_heads = num_heads
-        self.num_layers = num_layers
-        self.ff_expansion = ff_expansion
-        self.dropout = dropout
+        self.V = config.vocab_size
+        self.D = config.embedding_dim
+        self.C = config.context_length
+        self.num_heads = config.num_heads
+        self.num_layers = config.num_layers
+        self.ff_expansion = config.ff_expansion
+        self.dropout = config.dropout
+        self.transformer_type = config.transformer_type
+        self.alpha = config.alpha
+        self.t = config.t
 
         self.token_embedding_table = nn.Embedding(self.V, self.D)
         self.position_embedding_table = nn.Embedding(self.C, self.D)
 
-        self.blocks = nn.Sequential(
-            *[Block(self.D, self.num_heads, self.C, self.ff_expansion, self.dropout)
-              for _ in range(self.num_layers)]
-        )
+        if self.transformer_type == TransformerType.BASIC:
+            self.blocks = nn.Sequential(
+                *[Block(self.D, self.num_heads, self.C, self.ff_expansion, self.dropout)
+                  for _ in range(self.num_layers)]
+            )
+        elif self.transformer_type == TransformerType.BASIC_SPARSE_ATTENTION:
+            self.blocks = nn.Sequential(
+                *[BasicSparseTransformerBlock(
+                    self.D, self.num_heads, self.C, self.alpha, self.t, self.ff_expansion, self.dropout)
+                  for _ in range(self.num_layers)]
+            )
+        else:
+            raise ValueError(f"Unknown transformer type: {self.transformer_type}")
+            
         self.ln_f = nn.LayerNorm(self.D)
         self.lm_head = nn.Linear(self.D, self.V)
 

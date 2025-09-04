@@ -36,8 +36,8 @@ class BasicSparseAttentionHead(nn.Module):
         self.D = D
         self.C = C
         self.alpha = alpha
-        self.t = t
         self.D2 = int(alpha * H)
+        self.t = max(1, min(t, self.D2))
 
         self.key_lift   = nn.Linear(D, self.D2, bias=False)
         self.query_lift = nn.Linear(D, self.D2, bias=False)
@@ -73,12 +73,12 @@ class BasicSparseAttentionHead(nn.Module):
         # lift then sparsify queries, keys
         K_lift = self.key_lift(X)    # (B, C, D2)
         Q_lift = self.query_lift(X)  # (B, C, D2)
-        t_eff = max(1, min(self.t, self.D2))
-        K = self._top_t(K_lift, t_eff)  # (B, C, D2)
-        Q = self._top_t(Q_lift, t_eff)  # (B, C, D2)
+        K = self._top_t(K_lift, self.t)  # (B, C, D2)
+        Q = self._top_t(Q_lift, self.t)  # (B, C, D2)
 
+        # from here basically follow vanilla attention (but normalize by effective active dimensionality)
         att = Q @ K.transpose(-2, -1)   # (B, C, C)
-        att = att / (t_eff ** 0.5)  # normalization is by effective active dimensionality
+        att = att / (self.t ** 0.5)
         att = att.masked_fill(self.tril[:C, :C] == 0, float("-inf"))  # (B, C, C)
         att = F.softmax(att, dim=-1)                                   # (B, C, C)
 
@@ -108,16 +108,18 @@ class BasicSparseTransformerBlock(nn.Module):
     (B, C, D) -> (B, C, D)
     """
 
-    def __init__(self, D: int, n_head: int, C: int, alpha: float, t: int, ff_expansion: int = 4, dropout: float = 0.):
+    def __init__(self, D: int, num_heads: int, C: int, alpha: float, t: int, ff_expansion: int = 4, dropout: float = 0.):
         """
         D: embedding dimension
-        n_head: the number of heads we'd like
+        num_heads: the number of heads we'd like
         C: context length
+        alpha: lift factor; lifted dimension D2 = alpha * H (H is head dim)
+        t: number of active coordinates kept per token in the lifted space
         ff_expansion: ratio of hidden dim to input dim of feedforward block
-        dropout: dropout parameter
+        dropout: dropout parameter (for MLP)
         """
         super().__init__()
-        self.attn = BasicSparseAttention(n_head, D, C, alpha, t)
+        self.attn = BasicSparseAttention(num_heads, D, C, alpha, t)
         self.ffwd = MLP(D, ff_expansion, dropout)
         self.ln1 = nn.LayerNorm(D)
         self.ln2 = nn.LayerNorm(D)
