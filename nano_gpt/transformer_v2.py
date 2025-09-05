@@ -47,7 +47,6 @@ class TransformerV2(nn.Module):
                 num_heads=self.num_heads_regular,
                 Cw=self.Cw,
                 ff_expansion=self.ff_expansion,
-                dropout=self.dropout,
             )
             for _ in range(self.num_regular)
         ])
