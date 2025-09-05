@@ -15,7 +15,8 @@ def run_transformer(transformer_type: TransformerType, dataset_type: DatasetType
     if dataset_type == DatasetType.SHAKESPEARE:
         cfg = ModelConfig(transformer_type=transformer_type)
     else:
-        cfg = wt2_word_config()
+        # cfg = wt2_word_config() TODO: fix
+        cfg = V2ModelConfig()
 
     if torch.cuda.is_available():
         torch.set_float32_matmul_precision("high")

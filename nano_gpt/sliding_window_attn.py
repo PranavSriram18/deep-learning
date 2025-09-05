@@ -26,7 +26,6 @@ class SlidingWindowHead(nn.Module):
         self.Cw = int(Cw)
 
     def forward(self, X: torch.Tensor) -> torch.Tensor:
-        # X: (B, T, D)
         B, T, _ = X.shape
         H = self.key.out_features
         Cw = self.Cw
@@ -43,18 +42,11 @@ class SlidingWindowHead(nn.Module):
         else:
             Kp, Vp = K, V
 
-        # Sliding windows: (B, T, Cw, H)
-        Kwin = Kp.unfold(dimension=1, size=Cw, step=1)
-        Vwin = Vp.unfold(dimension=1, size=Cw, step=1)
-
-        # Sanity: last dim must match Q's last dim
-        Hq, Hk = Q.size(-1), Kwin.size(-1)
-        if Hq != Hk:
-            raise RuntimeError(f"Head dim mismatch: Q has {Hq}, Kwin has {Hk}. "
-                            f"Check num_heads and layer init.")
+        # Unfold adds window as the LAST dim: (B, T, H, Cw). Permute to (B, T, Cw, H).
+        Kwin = Kp.unfold(dimension=1, size=Cw, step=1).permute(0, 1, 3, 2)
+        Vwin = Vp.unfold(dimension=1, size=Cw, step=1).permute(0, 1, 3, 2)
 
         # Scores over the window: (B, T, Cw)
-        # (B,T,1,H) @ (B,T,H,Cw) -> (B,T,1,Cw) -> (B,T,Cw)
         att = (Q.unsqueeze(2) @ Kwin.transpose(-1, -2)).squeeze(2) / (H ** 0.5)
 
         # Mask padded slots for the first positions
