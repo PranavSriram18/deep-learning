@@ -13,6 +13,7 @@ torch.manual_seed(1337)
 
 class TransformerV2(nn.Module):
     def __init__(self, config: V2ModelConfig):
+        print(f"Initializing TransformerV2 with config {config}")
         super().__init__()
         self.V  = config.vocab_size
         self.D  = config.embedding_dim
