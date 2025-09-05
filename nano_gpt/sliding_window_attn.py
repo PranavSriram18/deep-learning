@@ -31,36 +31,42 @@ class SlidingWindowHead(nn.Module):
         Cw = self.Cw
         pad = max(0, Cw - 1)
 
-        # Projections
         Q = self.query(X)  # (B, T, H)
         K = self.key(X)    # (B, T, H)
         V = self.value(X)  # (B, T, H)
 
-        # Left-pad time dimension so each position i has window [i-Cw+1, ..., i]
+        # Left-pad time so each position i has keys from [i-Cw+1, ..., i]
         if pad > 0:
             Kp = F.pad(K, (0, 0, pad, 0, 0, 0))  # (B, T+pad, H)
             Vp = F.pad(V, (0, 0, pad, 0, 0, 0))  # (B, T+pad, H)
         else:
             Kp, Vp = K, V
 
-        # Sliding windows of length Cw along time: (B, T, Cw, H)
+        # Sliding windows: (B, T, Cw, H)
         Kwin = Kp.unfold(dimension=1, size=Cw, step=1)
         Vwin = Vp.unfold(dimension=1, size=Cw, step=1)
-        # At this point: Kwin/Vwin: (B, T, Cw, H)
 
-        # Attention scores over the window: (B, T, Cw)
-        att = torch.einsum("bth,btkh->btk", Q, Kwin) / (H ** 0.5)
+        # Sanity: last dim must match Q's last dim
+        Hq, Hk = Q.size(-1), Kwin.size(-1)
+        if Hq != Hk:
+            raise RuntimeError(f"Head dim mismatch: Q has {Hq}, Kwin has {Hk}. "
+                            f"Check num_heads and layer init.")
 
-        # Mask padded slots for early positions (first rows have fewer than Cw valid keys)
+        # Scores over the window: (B, T, Cw)
+        # (B,T,1,H) @ (B,T,H,Cw) -> (B,T,1,Cw) -> (B,T,Cw)
+        att = (Q.unsqueeze(2) @ Kwin.transpose(-1, -2)).squeeze(2) / (H ** 0.5)
+
+        # Mask padded slots for the first positions
         if pad > 0:
-            i = torch.arange(T, device=X.device).unsqueeze(1)  # (T, 1)
-            j = torch.arange(Cw, device=X.device).unsqueeze(0) # (1, Cw)
-            valid = j <= i                                     # (T, Cw)
-            att = att.masked_fill(~valid.unsqueeze(0), float("-inf"))
+            i = torch.arange(T, device=X.device).unsqueeze(1)  # (T,1)
+            j = torch.arange(Cw, device=X.device).unsqueeze(0) # (1,Cw)
+            valid = j <= i                                     # (T,Cw)
+            att = att.masked_fill(~valid.unsqueeze(0), float('-inf'))
 
         att = F.softmax(att, dim=-1)           # (B, T, Cw)
-        att = self.dropout(att)
-        out = torch.einsum("btk,btkh->bth", att, Vwin)  # (B, T, H)
+
+        # Weighted sum of values: (B,T,1,Cw) @ (B,T,Cw,H) -> (B,T,1,H) -> (B,T,H)
+        out = (att.unsqueeze(2) @ Vwin).squeeze(2)
         return out
 
 
