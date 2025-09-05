@@ -51,7 +51,7 @@ class TransformerV2(nn.Module):
                 Cw=self.Cwi,
                 ff_expansion=self.ff_expansion,
             )
-            for _ in range(self.num_regular)
+            for _ in range(self.num_regular_init)
         ])
 
         # Later: sparse attention blocks over full context C
