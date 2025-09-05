@@ -31,6 +31,8 @@ class ModelConfig:
     alpha: float = 4.0
     t: int = 24
     tie_embeddings: bool = True
+    use_factorized_embeddings: bool = False
+    vocab_embed_dim: int = 256
     use_ste: bool = True
 
     # sampling controls
@@ -44,7 +46,7 @@ def wt2_word_config() -> ModelConfig:
         learning_rate=2e-3,
         print_every=128,
         train_steps=1024 * 8 + 1,
-        context_length=32,
+        context_length=48,
         embedding_dim=256,
         num_heads=4,
         num_layers=10,
@@ -54,6 +56,8 @@ def wt2_word_config() -> ModelConfig:
         alpha=4.0,
         t=24,
         tie_embeddings=True,
+        use_factorized_embeddings=True,
+        vocab_embed_dim=48,
         use_ste=True,
         sample_length=500,
         sample_prompts={"India is", "The United States is"}
