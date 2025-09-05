@@ -10,10 +10,6 @@ from nano_gpt.data_wt2_word import WT2WordDataLoader
 
 # from nano_gpt.bigram_model import BigramModel  # optional baseline
 
-# Sampling controls
-sample_length = 500
-sample_prompts = ["Julius: ", "On thy hands he wraithed. "]
-
 def run_transformer(transformer_type: TransformerType, dataset_type: DatasetType):
     if transformer_type == TransformerType.BASIC:
         cfg = ModelConfig(transformer_type=transformer_type)
@@ -47,8 +43,8 @@ def run_transformer(transformer_type: TransformerType, dataset_type: DatasetType
         model=model,
         data_loader=data_loader,
         char_level_tokenize=dataset_type == DatasetType.SHAKESPEARE,
-        sample_prompts=sample_prompts,
-        sample_length=sample_length,
+        sample_prompts=cfg.sample_prompts,
+        sample_length=cfg.sample_length,
         device=device,
         use_amp=True,
     )

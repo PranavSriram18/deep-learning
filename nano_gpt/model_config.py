@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from enum import Enum
+from typing import List
 
 
 class TransformerType(Enum):
@@ -31,6 +32,10 @@ class ModelConfig:
     t: int = 24
     tie_embeddings: bool = True
 
+    # sampling controls
+    sample_length: int = 500
+    sample_prompts: List[str] = ["Julius: ", "On thy hands he wraithed. "]
+
 def wt2_word_config() -> ModelConfig:
     return ModelConfig(
         batch_size=8,
@@ -47,5 +52,7 @@ def wt2_word_config() -> ModelConfig:
         transformer_type=TransformerType.BASIC_SPARSE_ATTENTION,
         alpha=4.0,
         t=16,
-        tie_embeddings=True
+        tie_embeddings=True,
+        sample_length=500,
+        sample_prompts=["India is", "The United States is"]
     )
