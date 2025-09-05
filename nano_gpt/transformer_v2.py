@@ -18,10 +18,12 @@ class TransformerV2(nn.Module):
         self.V  = config.vocab_size
         self.D  = config.embedding_dim
         self.C  = config.context_length
-        self.Cw = config.sliding_window
+        self.Cwi = config.sliding_window_init
+        self.Cwf = config.sliding_window_final
 
-        self.num_regular       = config.num_regular_blocks
+        self.num_regular_init       = config.num_regular_init
         self.num_sparse        = config.num_sparse_blocks
+        self.num_regular_final = config.num_regular_final
         self.num_heads_regular = config.num_heads_regular
         self.num_heads_sparse  = config.num_heads_sparse
 
@@ -41,12 +43,12 @@ class TransformerV2(nn.Module):
         # Positional embeddings in D
         self.position_embedding_table = nn.Embedding(self.C, self.D)
 
-        # Early: sliding-window (local) attention blocks with window Cw
-        self.sliding_window_stack = nn.Sequential(*[
+        # Early: sliding-window (local) attention blocks with window Cwi
+        self.sliding_window_stack_init = nn.Sequential(*[
             SlidingWindowBlock(
                 D=self.D,
                 num_heads=self.num_heads_regular,
-                Cw=self.Cw,
+                Cw=self.Cwi,
                 ff_expansion=self.ff_expansion,
             )
             for _ in range(self.num_regular)
@@ -65,6 +67,17 @@ class TransformerV2(nn.Module):
                 use_ste=self.use_ste,
             )
             for _ in range(self.num_sparse)
+        ])
+
+        # finally: another sliding window stack
+        self.sliding_window_stack_final = nn.Sequential(*[
+            SlidingWindowBlock(
+                D=self.D,
+                num_heads=self.num_heads_regular,
+                Cw=self.Cwf,
+                ff_expansion=self.ff_expansion,
+            )
+            for _ in range(self.num_regular_final)
         ])
 
         self.ln_f = nn.LayerNorm(self.D)
@@ -94,8 +107,9 @@ class TransformerV2(nn.Module):
         x = tok + pos_emb.unsqueeze(0)                   # (B, T, D)
 
         # Sliding-window then sparse stacks (both preserve sequence length)
-        x = self.sliding_window_stack(x)                 # (B, T, D)
+        x = self.sliding_window_stack_init(x)                 # (B, T, D)
         x = self.sparse_stack(x)                         # (B, T, D)
+        x = self.sliding_window_stack_final(x)                 # (B, T, D)
 
         # Final norm and unembedding
         x = self.ln_f(x)                                 # (B, T, D)
