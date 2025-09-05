@@ -44,7 +44,7 @@ def wt2_word_config() -> ModelConfig:
         batch_size=8,
         vocab_size=50000,
         learning_rate=1e-3,
-        print_every=128,
+        print_every=256,
         train_steps=2 ** 14 + 1,
         context_length=64,
         embedding_dim=256,

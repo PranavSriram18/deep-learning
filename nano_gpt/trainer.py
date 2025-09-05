@@ -37,6 +37,8 @@ class Trainer:
         print("In Trainer::train", flush=True)
         self.model.train()
         optimizer = torch.optim.AdamW(self.model.parameters(), lr=lr)
+        # decay by 0.99 each time print_every steps elapse
+        self.scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=print_every, gamma=0.99)
 
         for i in range(steps):
             # ---- sample a batch
@@ -64,13 +66,12 @@ class Trainer:
                 loss.backward()
                 optimizer.step()
 
+            self.scheduler.step()
+
             if (i % print_every == 0):
                 # Small, safe log (avoid printing giant tensors)
                 print(f"step {i} | loss {loss.item():.4f} | logits[0,-1,:5]={logits[0, -1, :5].detach().cpu().tolist()}")
                 self.print_sample(i, loss.item())
-                # damp lr
-                lr = lr * 0.99
-                optimizer = torch.optim.AdamW(self.model.parameters(), lr=lr)
 
     @torch.no_grad()
     def estimate_loss(self, eval_iters: int) -> Dict[str, float]:
