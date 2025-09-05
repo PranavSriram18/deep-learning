@@ -37,8 +37,8 @@ class Trainer:
         print("In Trainer::train", flush=True)
         self.model.train()
         optimizer = torch.optim.AdamW(self.model.parameters(), lr=lr)
-        # decay by 0.99 each time print_every steps elapse
-        self.scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=print_every, gamma=0.99)
+        # decay each time print_every steps elapse
+        self.scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=print_every, gamma=0.985)
 
         for i in range(steps):
             # ---- sample a batch
