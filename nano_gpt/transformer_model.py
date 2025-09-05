@@ -26,6 +26,7 @@ class TransformerModel(nn.Module):
         self.transformer_type = config.transformer_type
         self.alpha = config.alpha
         self.t = config.t
+        self.use_ste = config.use_ste
 
         self.token_embedding_table = nn.Embedding(self.V, self.D)
         self.position_embedding_table = nn.Embedding(self.C, self.D)
@@ -38,7 +39,7 @@ class TransformerModel(nn.Module):
         elif self.transformer_type == TransformerType.BASIC_SPARSE_ATTENTION:
             self.blocks = nn.Sequential(
                 *[BasicSparseTransformerBlock(
-                    self.D, self.num_heads, self.C, self.alpha, self.t, self.ff_expansion, self.dropout)
+                    self.D, self.num_heads, self.C, self.alpha, self.t, self.ff_expansion, self.dropout, self.use_ste)
                   for _ in range(self.num_layers)]
             )
         else:

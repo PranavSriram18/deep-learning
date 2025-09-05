@@ -31,6 +31,7 @@ class ModelConfig:
     alpha: float = 4.0
     t: int = 24
     tie_embeddings: bool = True
+    use_ste: bool = True
 
     # sampling controls
     sample_length: int = 500
@@ -40,19 +41,20 @@ def wt2_word_config() -> ModelConfig:
     return ModelConfig(
         batch_size=8,
         vocab_size=50000,
-        learning_rate=1e-3,
+        learning_rate=2e-3,
         print_every=128,
         train_steps=1024 * 8 + 1,
-        context_length=64,
+        context_length=32,
         embedding_dim=256,
-        num_heads=8,
-        num_layers=12,
+        num_heads=4,
+        num_layers=10,
         ff_expansion=2,
         dropout=0.0,
         transformer_type=TransformerType.BASIC_SPARSE_ATTENTION,
         alpha=4.0,
-        t=16,
+        t=24,
         tie_embeddings=True,
+        use_ste=True,
         sample_length=500,
         sample_prompts={"India is", "The United States is"}
     )
