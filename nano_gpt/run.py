@@ -1,6 +1,6 @@
 # nano_gpt/run.py
 from dataclasses import dataclass
-from nano_gpt.model_config import DatasetType, ModelConfig, TransformerType, V2ModelConfig, wt2_word_config
+from nano_gpt.model_config import DatasetType, ModelConfig, TransformerType, V2ModelConfig
 from nano_gpt.transformer_v2 import TransformerV2
 import torch  # type: ignore
 
