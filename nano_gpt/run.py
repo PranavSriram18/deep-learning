@@ -11,7 +11,7 @@ from nano_gpt.data_wt2_word import WT2WordDataLoader
 # from nano_gpt.bigram_model import BigramModel  # optional baseline
 
 def run_transformer(transformer_type: TransformerType, dataset_type: DatasetType):
-    if transformer_type == TransformerType.BASIC:
+    if dataset_type == DatasetType.SHAKESPEARE:
         cfg = ModelConfig(transformer_type=transformer_type)
     else:
         cfg = wt2_word_config()
