@@ -68,6 +68,9 @@ class Trainer:
                 # Small, safe log (avoid printing giant tensors)
                 print(f"step {i} | loss {loss.item():.4f} | logits[0,-1,:5]={logits[0, -1, :5].detach().cpu().tolist()}")
                 self.print_sample(i, loss.item())
+                # damp lr
+                lr = lr * 0.99
+                optimizer = torch.optim.AdamW(self.model.parameters(), lr=lr)
 
     @torch.no_grad()
     def estimate_loss(self, eval_iters: int) -> Dict[str, float]:
