@@ -43,20 +43,20 @@ class ModelConfig:
 @dataclass 
 class V2ModelConfig:
     # training hyperparameters
-    batch_size: int = 32
-    learning_rate: float = 1.3e-3
+    batch_size: int = 48
+    learning_rate: float = 1.5e-3
     print_every: int = 256
     train_steps: int = 20000
 
     # model hyperparameters
     embedding_dim: int = 256
-    context_length: int = 64
+    context_length: int = 96
     sliding_window: int = 16
     vocab_size: int = 48000
     vocab_embed_dim: int = 96
-    num_heads_regular: int = 4
+    num_heads_regular: int = 8
     num_heads_sparse: int = 1
-    num_regular_blocks: int = 4
+    num_regular_blocks: int = 6
     num_sparse_blocks: int = 2
     ff_expansion: int = 2
     dropout: float = 0.0
