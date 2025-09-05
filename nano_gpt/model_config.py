@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum
 from typing import List
 
@@ -34,7 +34,7 @@ class ModelConfig:
 
     # sampling controls
     sample_length: int = 500
-    sample_prompts: List[str] = ["Julius: ", "On thy hands he wraithed. "]
+    sample_prompts: set[str] = field(default_factory=lambda: {"Julius: ", "On thy hands he wraithed. "})
 
 def wt2_word_config() -> ModelConfig:
     return ModelConfig(
@@ -54,5 +54,5 @@ def wt2_word_config() -> ModelConfig:
         t=16,
         tie_embeddings=True,
         sample_length=500,
-        sample_prompts=["India is", "The United States is"]
+        sample_prompts={"India is", "The United States is"}
     )
