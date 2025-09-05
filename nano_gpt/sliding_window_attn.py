@@ -19,7 +19,7 @@ class SlidingWindowHead(nn.Module):
     """
     def __init__(self, H: int, D: int, Cw: int):
         super().__init__()
-        print(f"Initializing SlidingWindowHead: H={H}, D={D}, Cw={Cw}")
+        print(f"Initializing SlidingWindowHead (new version): H={H}, D={D}, Cw={Cw}")
         self.key   = nn.Linear(D, H, bias=False)
         self.query = nn.Linear(D, H, bias=False)
         self.value = nn.Linear(D, H, bias=False)
