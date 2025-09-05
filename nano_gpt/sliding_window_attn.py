@@ -77,7 +77,7 @@ class SlidingWindowAttention(nn.Module):
         assert D % num_heads == 0, "Embedding dim D must be divisible by num_heads"
         H = D // num_heads
         self.heads = nn.ModuleList(
-            [SlidingWindowHead(H=H, D=D, Cw=Cw, dropout=dropout) for _ in range(num_heads)]
+            [SlidingWindowHead(H=H, D=D, Cw=Cw) for _ in range(num_heads)]
         )
         self.proj = nn.Linear(D, D)
         self.dropout = nn.Dropout(dropout)
