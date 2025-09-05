@@ -86,12 +86,12 @@ class BasicSparseAttentionHead(nn.Module):
 
 class BasicSparseAttention(nn.Module):
     """ Multiple heads of basic sparse self-attention in parallel. """
-    def __init__(self, num_heads: int, D: int, C: int, alpha: float, t: int, use_ste: bool = True):
+    def __init__(self, D: int, num_heads: int, C: int, alpha: float, t: int, use_ste: bool = True):
         super().__init__()
         assert D % num_heads == 0
         H = D // num_heads
         self.heads = nn.ModuleList([
-            BasicSparseAttentionHead(H, D, C, alpha=alpha, t=t, use_ste=use_ste)
+            BasicSparseAttentionHead(H=H, D=D, C=C, alpha=alpha, t=t, use_ste=use_ste)
             for _ in range(num_heads)
         ])
         self.proj = nn.Linear(D, D, bias=True)
@@ -129,8 +129,8 @@ class BasicSparseTransformerBlock(nn.Module):
         dropout: dropout parameter (for MLP)
         """
         super().__init__()
-        self.attn = BasicSparseAttention(num_heads, D, C, alpha, t, use_ste=use_ste)
-        self.ffwd = MLP(D, ff_expansion, dropout)
+        self.attn = BasicSparseAttention(D=D, num_heads=num_heads, C=C, alpha=alpha, t=t, use_ste=use_ste)
+        self.ffwd = MLP(D=D, ff_expansion=ff_expansion, dropout=dropout)
         self.ln1 = nn.LayerNorm(D)
         self.ln2 = nn.LayerNorm(D)
 

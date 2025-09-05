@@ -90,17 +90,17 @@ class Block(nn.Module):
     (B, C, D) -> (B, C, D)
     """
 
-    def __init__(self, D: int, n_head: int, C: int, ff_expansion: int = 4, dropout: float = 0.):
+    def __init__(self, D: int, num_heads: int, C: int, ff_expansion: int = 4, dropout: float = 0.):
         """
         D: embedding dimension
-        n_head: the number of heads we'd like
+        num_heads: the number of heads we'd like
         C: context length
         ff_expansion: ratio of hidden dim to input dim of feedforward block
         dropout: dropout parameter
         """
         super().__init__()
-        self.attn = MultiHeadAttention(n_head, D, C, dropout)
-        self.ffwd = MLP(D, ff_expansion, dropout)
+        self.attn = MultiHeadAttention(num_heads, D, C, dropout)
+        self.ffwd = MLP(D=D, ff_expansion=ff_expansion, dropout=dropout)
         self.ln1 = nn.LayerNorm(D)
         self.ln2 = nn.LayerNorm(D)
 

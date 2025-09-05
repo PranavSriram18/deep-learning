@@ -1,6 +1,7 @@
 # nano_gpt/run.py
 from dataclasses import dataclass
-from nano_gpt.model_config import DatasetType, ModelConfig, TransformerType, wt2_word_config
+from nano_gpt.model_config import DatasetType, ModelConfig, TransformerType, V2ModelConfig, wt2_word_config
+from nano_gpt.transformer_v2 import TransformerV2
 import torch  # type: ignore
 
 from nano_gpt.trainer import Trainer
@@ -64,8 +65,44 @@ def run_transformer(transformer_type: TransformerType, dataset_type: DatasetType
     trainer.print_sample()
 
 
-if __name__ == "__main__":
-    run_transformer(
-        transformer_type=TransformerType.BASIC_SPARSE_ATTENTION,
-        dataset_type=DatasetType.WT2_WORD
+def run_transformer_v2():
+    print("Running transformer v2")
+    cfg = V2ModelConfig()
+    if torch.cuda.is_available():
+        torch.set_float32_matmul_precision("high")
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    print("Using device:", device)
+    if device.type == "cuda":
+        print("GPU:", torch.cuda.get_device_name(0))
+
+
+    data_loader = WT2WordDataLoader(
+        batch_size=cfg.batch_size, block_size=cfg.context_length, vocab_size=cfg.vocab_size)
+
+    model = TransformerV2(config=cfg)
+    print(f"Built model with config {cfg}")
+    trainer = Trainer(
+        model=model,
+        data_loader=data_loader,
+        char_level_tokenize=False,
+        sample_prompts=cfg.sample_prompts,
+        sample_length=cfg.sample_length,
+        device=device,
+        use_amp=True,
     )
+
+    print("Sample before training:\n")
+    trainer.print_sample()
+    print("Starting training!")
+    trainer.train(
+        lr=cfg.learning_rate,
+        batch_size=cfg.batch_size,
+        steps=cfg.train_steps,
+        print_every=cfg.print_every,
+    )
+
+    print("Sample after training:\n")
+    trainer.print_sample()
+
+if __name__ == "__main__":
+    run_transformer_v2()
