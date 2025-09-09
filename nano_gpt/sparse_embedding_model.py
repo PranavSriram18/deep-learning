@@ -37,10 +37,12 @@ class SparseEmbeddingModelConfig:
     batch_size: int = 128
     learning_rate: float = 1e-3
     print_every: int = 256
-    train_steps: int = 8000
+    train_steps: int = 2000
     context_length: int = 64
     sample_prompts: set[str] = field(default_factory=lambda: {"India is", "The United States is"})
     sample_length: int = 200
+
+    ckpt_path: str = "sparse_embedding_model.pt"
 
 # --------- Model ---------
 class SparseEmbeddingModel(nn.Module):
@@ -79,6 +81,7 @@ class SparseEmbeddingModel(nn.Module):
 
         # Step counter for annealing (CPU/long buffer)
         self.register_buffer("_step", torch.zeros((), dtype=torch.long))
+        self.ckpt_path = config.ckpt_path
 
     # --- utilities ---
     @staticmethod
@@ -179,3 +182,56 @@ class SparseEmbeddingModel(nn.Module):
             next_token = torch.multinomial(probs, 1)        # (B, 1)
             idx = torch.cat([idx, next_token], dim=1)
         return idx
+
+    # nano_gpt/models/sparse_embedding_model.py  (append inside class)
+
+    # --- expose current t-sparse views (no grad) ---
+    @torch.no_grad()
+    def project_tables(self) -> tuple[torch.Tensor, torch.Tensor]:
+        """
+        Returns:
+          Zproj: (V, D) TopK_t(Z)  on input side
+          Uproj: (V, D) TopK_t(U)  on output side
+        """
+        device = self.Z.device
+        V, D, t = self.V, self.D, self.t
+
+        # Input side projection
+        in_mask  = self._row_topk_mask(self.Z, t)          # (V, D) bool
+        Zproj    = (self.Z * in_mask).detach().clone()     # sparse forward view
+
+        # Output side projection
+        out_mask = self._row_topk_mask(self.U, t)          # (V, D) bool
+        Uproj    = (self.U * out_mask).detach().clone()
+
+        return Zproj, Uproj
+
+    @torch.no_grad()
+    def save_checkpoint(
+        self,
+        id_to_token: Optional[list[str]] = None,
+        extra_meta: Optional[dict] = None,
+    ) -> None:
+        """
+        Saves ONLY ONE file (overwrites): the *projected* sparse tables at current t.
+        File format: a torch .pt dict with:
+          - 't', 'V', 'D'
+          - 'Z_proj', 'U_proj'  (float32, CPU)
+          - 'tokens' (optional list[str])
+          - 'meta'   (optional dict)
+        """
+        Zproj, Uproj = self.project_tables()
+        payload = {
+            "t": int(self.t),
+            "V": int(self.V),
+            "D": int(self.D),
+            "Z_proj": Zproj.to("cpu").float(),
+            "U_proj": Uproj.to("cpu").float(),
+        }
+        if id_to_token is not None:
+            payload["tokens"] = list(id_to_token)
+        if extra_meta is not None:
+            payload["meta"] = dict(extra_meta)
+
+        torch.save(payload, self.ckpt_path)
+
