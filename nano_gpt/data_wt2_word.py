@@ -66,6 +66,10 @@ class WT2WordDataLoader:
         self.n_train = int(self.train_ids.numel())
         self.n_val   = int(self.val_ids.numel())
 
+        print(f"Successfully built WT2WordDataLoader with vocab size {
+            self.vocab_size_effective}, block size {self.block_size}, and batch size {
+                self.batch_size}", flush=True)
+
     def get_batch(self, split: str) -> Tuple[torch.Tensor, torch.Tensor]:
         data = self.train_ids if split == "train" else self.val_ids
         # Sample start positions; ensure room for block_size+1 tokens
