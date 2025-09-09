@@ -42,7 +42,7 @@ class SparseEmbeddingModelConfig:
     sample_prompts: set[str] = field(default_factory=lambda: {"India is", "The United States is"})
     sample_length: int = 200
 
-    ckpt_path: str = "sparse_embedding_model.pt"
+    ckpt_path: str = "embedding_checkpoint.pt"
 
 # --------- Model ---------
 class SparseEmbeddingModel(nn.Module):
