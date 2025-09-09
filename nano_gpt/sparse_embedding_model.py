@@ -2,7 +2,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Optional, Tuple
 
 # --------- Identity-backward STE for sparse-forward projection ---------
@@ -39,6 +39,8 @@ class SparseEmbeddingModelConfig:
     print_every: int = 256
     train_steps: int = 8000
     context_length: int = 64
+    sample_prompts: set[str] = field(default_factory=lambda: {"India is", "The United States is"})
+    sample_length: int = 200
 
 # --------- Model ---------
 class SparseEmbeddingModel(nn.Module):
