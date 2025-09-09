@@ -98,7 +98,11 @@ class ChunkedTransformer(nn.Module):
             loss = F.cross_entropy(logits_rs, sub_targets_rs)  # (B*k)xV, (B*k)
         return logits, loss  # BxkxV, (1)
     
-    def generate(self, idx, max_new_tokens) -> torch.Tensor:
+    def generate(self, idx, max_new_tokens, greedy: bool = False) -> torch.Tensor:
+        """
+        Generate continuation for a single prompt.
+        TODO: add support for greedy
+        """
         # idx is (B, C) array of indices in the current context
         for step in range(max_new_tokens):
             # Handle input padding/truncation

@@ -146,44 +146,44 @@ class SparseEmbeddingModel(nn.Module):
         loss = F.cross_entropy(logits.view(-1, V), yb.view(-1))
         return logits, loss
 
-    # --- generation (bigram roll) ---
     @torch.no_grad()
     def generate(
         self,
-        idx: torch.Tensor,        # (B, T) context; we use last token
+        idx: torch.Tensor,        # (B, T)
         max_new_tokens: int,
         temperature: Optional[float] = None,
         top_k: Optional[int] = None,
+        greedy: bool = True,
     ) -> torch.Tensor:
         """
-        Bigram sampler p(next | current). Uses current t (no anneal in eval).
+        Bigram sampler p(next | current). If greedy=True, picks argmax each step.
         """
-        device = next(self.parameters()).device
         temperature = float(temperature or self.temperature)
 
         for _ in range(max_new_tokens):
-            x_cur = idx[:, -1]                              # (B,)
-            z = self.Z[x_cur]                               # (B, D)
+            x_cur = idx[:, -1]                                # (B,)
+            z = self.Z[x_cur]                                 # (B, D)
             in_mask = self._row_topk_mask(z, self.t)
-            e = ste_project_identity_backward(z, in_mask)   # (B, D)
+            e = ste_project_identity_backward(z, in_mask)     # (B, D)
 
-            out_mask = self._row_topk_mask(self.U, self.t)  # (V, D)
+            out_mask = self._row_topk_mask(self.U, self.t)    # (V, D)
             Uproj    = ste_project_identity_backward(self.U, out_mask)  # (V, D)
 
-            logits = (e @ Uproj.T) / max(1e-6, temperature) # (B, V)
+            logits = (e @ Uproj.T) / max(1e-6, temperature)   # (B, V)
 
-            if top_k is not None:
-                topv, topi = torch.topk(logits, k=top_k, dim=-1)
-                filt = torch.full_like(logits, float("-inf"))
-                filt.scatter_(1, topi, topv)
-                logits = filt
+            if greedy:
+                next_token = logits.argmax(dim=-1, keepdim=True)  # (B, 1)
+            else:
+                if top_k is not None:
+                    topv, topi = torch.topk(logits, k=top_k, dim=-1)
+                    filt = torch.full_like(logits, float("-inf"))
+                    filt.scatter_(1, topi, topv)
+                    logits = filt
+                probs = torch.softmax(logits, dim=-1)
+                next_token = torch.multinomial(probs, 1)          # (B, 1)
 
-            probs = F.softmax(logits, dim=-1)               # (B, V)
-            next_token = torch.multinomial(probs, 1)        # (B, 1)
             idx = torch.cat([idx, next_token], dim=1)
         return idx
-
-    # nano_gpt/models/sparse_embedding_model.py  (append inside class)
 
     # --- expose current t-sparse views (no grad) ---
     @torch.no_grad()

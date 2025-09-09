@@ -120,7 +120,13 @@ class TransformerModel(nn.Module):
         loss = F.cross_entropy(logits.view(B * T, self.V), targets.view(B * T))
         return logits, loss
 
-    def generate(self, idx: torch.Tensor, max_new_tokens: int) -> torch.Tensor:
+    def generate(
+        self, idx: torch.Tensor, max_new_tokens: int, greedy: bool = False
+    ) -> torch.Tensor:
+        """
+        Generate continuation for a single prompt.
+        TODO: add support for greedy
+        """
         dev = next(self.parameters()).device
         idx = idx.to(dev)
         for _ in range(max_new_tokens):

@@ -26,7 +26,11 @@ class BigramModel(nn.Module):
             loss = F.cross_entropy(logits, targets)
         return logits, loss
 
-    def generate(self, idx, max_new_tokens):
+    def generate(self, idx, max_new_tokens, greedy: bool = False):
+        """
+        Generate continuation for a single prompt.
+        TODO: add support for greedy
+        """
         # idx is (B, T) array of indices in the current context
         for _ in range(max_new_tokens):
             # get the predictions. __call__ internally calls forward and does

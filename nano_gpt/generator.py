@@ -1,3 +1,4 @@
+# nano_gpt/generator.py
 import torch  # type: ignore
 import torch.nn as nn  # type: ignore
 from typing import List, Optional
@@ -32,21 +33,31 @@ class Generator:
         return torch.tensor(ids, dtype=torch.long, device=self._device())
 
     # ----- public API -----
-    def generate(self, prompt: str, max_new_tokens: int) -> List[str]:
+    def generate(self, prompt: str, max_new_tokens: int, greedy: bool = False) -> List[str]:
+        """
+        Generate continuation for a single prompt.
+        If greedy=True, picks argmax at each step; otherwise samples from the distribution.
+        """
         was_training = self.model.training
         self.model.eval()
         with torch.inference_mode():
             idx = self._to_idx(prompt).unsqueeze(0)        # (1, T) on model device
-            encoded = self.model.generate(idx, max_new_tokens)[0]  # (T+...)
+            encoded = self.model.generate(
+                idx, max_new_tokens, greedy=greedy
+            )[0]  # (T+...)
             tokens = encoded.tolist()
         if was_training:
             self.model.train()
         return self.loader.decode(tokens)
 
-    def generate_from_prompts(self, max_new_tokens: int, display: bool = True) -> List[List[str]]:
+    def generate_from_prompts(self, max_new_tokens: int, display: bool = True, greedy: bool = False) -> List[List[str]]:
+        """
+        Generate continuations for all configured sample prompts.
+        Set greedy=True for argmax decoding.
+        """
         outs: List[List[str]] = []
         for p in self.prompts:
-            outs.append(self.generate(p, max_new_tokens))
+            outs.append(self.generate(p, max_new_tokens, greedy=greedy))
         if display:
             print("Generated sample: ")
             for out in outs:
