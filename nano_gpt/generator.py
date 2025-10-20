@@ -1,16 +1,15 @@
 # nano_gpt/generator.py
+from data.base_loader import BaseLoader
 import torch  # type: ignore
 import torch.nn as nn  # type: ignore
 from typing import List, Optional
 
-from nano_gpt.data_loader import ShakespeareDataLoader
-from nano_gpt.data_wt2_word import WT2WordDataLoader
 
 class Generator:
     def __init__(
         self,
         model: nn.Module,
-        loader: ShakespeareDataLoader | WT2WordDataLoader,
+        loader: BaseLoader,
         char_level_tokenize: bool,
         sample_prompts: List[str],
     ):
