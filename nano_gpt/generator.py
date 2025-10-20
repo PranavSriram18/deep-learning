@@ -11,7 +11,7 @@ class Generator:
         self,
         model: nn.Module,
         loader: ShakespeareDataLoader | WT2WordDataLoader,
-        char_level_tokenize: bool,         # (renamed for clarity)
+        char_level_tokenize: bool,
         sample_prompts: List[str],
     ):
         self.model = model
@@ -19,19 +19,7 @@ class Generator:
         self.char_level_tokenize = char_level_tokenize
         self.prompts = sample_prompts
 
-    # ----- helpers -----
-    def _device(self) -> torch.device:
-        # derive from model parameters — single source of truth
-        return next(self.model.parameters()).device
-
-    def _to_idx(self, prompt: str) -> torch.Tensor:
-        if self.char_level_tokenize:
-            ids = self.loader.encode(list(prompt))
-        else:
-            ids = self.loader.encode(prompt.split(" "))
-        # ensure Long dtype for embeddings and correct device
-        return torch.tensor(ids, dtype=torch.long, device=self._device())
-
+    
     # ----- public API -----
     def generate(self, prompt: str, max_new_tokens: int, greedy: bool = False) -> List[str]:
         """
@@ -63,3 +51,17 @@ class Generator:
             for out in outs:
                 print(f"\n {out} \n", flush=True)
         return outs
+
+    # ----- internal helpers -----
+    def _device(self) -> torch.device:
+        # derive from model parameters — single source of truth
+        return next(self.model.parameters()).device
+
+    def _to_idx(self, prompt: str) -> torch.Tensor:
+        if self.char_level_tokenize:
+            ids = self.loader.encode(list(prompt))
+        else:
+            ids = self.loader.encode(prompt.split(" "))
+        # ensure Long dtype for embeddings and correct device
+        return torch.tensor(ids, dtype=torch.long, device=self._device())
+

@@ -1,12 +1,14 @@
 # nano_gpt/data_wt2_word.py
 from collections import Counter
-from typing import List, Tuple
+from typing import List, Tuple, override
 import torch  # type: ignore
 from datasets import load_dataset  # type: ignore
 
+from data.base_loader import BaseLoader, DataMode
+
 UNK_TOKEN = "<UNK>"
 
-class WT2WordDataLoader:
+class WT2DataLoader(BaseLoader):
     """
     Word-level WikiText-2 (raw) loader with vocab capping.
     - Vocabulary is built from the train split only.
@@ -16,15 +18,16 @@ class WT2WordDataLoader:
 
     def __init__(
         self,
-        block_size: int,
         batch_size: int,
+        tokens_per_batch: int,
         vocab_size: int = 50_000,
         seed: int = 1337,
     ):
-        assert vocab_size >= 1, "vocab_size must be >= 1"
-        self.block_size = block_size
-        self.batch_size = batch_size
-        self.vocab_size = vocab_size
+        super().__init__(
+            batch_size=batch_size, 
+            tokens_per_batch=tokens_per_batch, 
+            vocab_size=None
+        )
 
         self._rng = torch.Generator().manual_seed(seed)
 
@@ -46,21 +49,11 @@ class WT2WordDataLoader:
         self.itos: List[str] = [UNK_TOKEN] + kept
         self.stoi = {w: i for i, w in enumerate(self.itos)}
 
-        def encode(tokens: List[str]) -> List[int]:
-            unk = 0
-            return [self.stoi.get(w, unk) for w in tokens]
-
-        def decode(ids: List[int]) -> List[str]:
-            n = len(self.itos)
-            return [self.itos[i] if 0 <= i < n else UNK_TOKEN for i in ids]
-
-        self.encode = encode
-        self.decode = decode
-        self.vocab_size_effective = len(self.itos)
+        self.vocab_size = len(self.itos)
 
         # Materialize token id streams
-        self.train_ids = torch.tensor(encode(train_tokens), dtype=torch.long)
-        self.val_ids   = torch.tensor(encode(val_tokens),   dtype=torch.long)
+        self.train_ids = torch.tensor(self.encode(train_tokens), dtype=torch.long)
+        self.val_ids   = torch.tensor(self.encode(val_tokens),   dtype=torch.long)
 
         # Cached lengths
         self.n_train = int(self.train_ids.numel())
@@ -70,8 +63,19 @@ class WT2WordDataLoader:
             self.vocab_size_effective}, block size {self.block_size}, and batch size {
                 self.batch_size}", flush=True)
 
-    def get_batch(self, split: str) -> Tuple[torch.Tensor, torch.Tensor]:
-        data = self.train_ids if split == "train" else self.val_ids
+    @override
+    def encode(self, tokens: List[str]) -> List[int]:
+        unk = 0
+        return [self.stoi.get(w, unk) for w in tokens]
+
+    @override
+    def decode(self, ids: List[int]) -> List[str]:
+        n = len(self.itos)
+        return [self.itos[i] if 0 <= i < n else UNK_TOKEN for i in ids]
+
+    @override
+    def get_batch(self, data_mode: DataMode) -> Tuple[torch.Tensor, torch.Tensor]:
+        data = self.train_ids if data_mode == DataMode.TRAIN else self.val_ids
         # Sample start positions; ensure room for block_size+1 tokens
         hi = data.numel() - self.block_size - 1
         idx = torch.randint(0, hi, (self.batch_size,), generator=self._rng)

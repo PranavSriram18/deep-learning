@@ -1,6 +1,6 @@
 # nano_gpt/run.py
 from dataclasses import dataclass
-from nano_gpt.model_config import DatasetType, ModelConfig, TransformerType, V2ModelConfig
+from nano_gpt.model_config import DatasetType, ModelConfig, TransformerType, V2ModelConfig, v2_shakespeare_config
 from nano_gpt.transformer_v2 import TransformerV2
 import torch  # type: ignore
 
@@ -10,7 +10,7 @@ from nano_gpt.transformer_model import TransformerModel
 from nano_gpt.data_wt2_word import WT2WordDataLoader
 from nano_gpt.sparse_embedding_model import SparseEmbeddingModel, SparseEmbeddingModelConfig
 
-# from nano_gpt.bigram_model import BigramModel  # optional baseline
+# TODO - refactor 
 
 def run_transformer(transformer_type: TransformerType, dataset_type: DatasetType):
     if dataset_type == DatasetType.SHAKESPEARE:
@@ -27,7 +27,6 @@ def run_transformer(transformer_type: TransformerType, dataset_type: DatasetType
         print("GPU:", torch.cuda.get_device_name(0))
 
     
-
     vocab_cap = 50_000 if dataset_type == DatasetType.WT2_WORD else 65
     if dataset_type == DatasetType.WT2_WORD:
         data_loader = WT2WordDataLoader(batch_size=cfg.batch_size, block_size=cfg.context_length, vocab_size=vocab_cap)
@@ -134,6 +133,47 @@ def run_sparse_embedding_model():
 
     print("Sample before training:\n")
     trainer.print_sample()
+    print("Starting training!")
+    trainer.train(
+        lr=cfg.learning_rate,
+        batch_size=cfg.batch_size,
+        steps=cfg.train_steps,
+        print_every=cfg.print_every,
+    )
+
+    print("Sample after training:\n")
+    trainer.print_sample()
+
+def run_shakespeare_v2():
+    cfg = v2_shakespeare_config()
+
+    if torch.cuda.is_available():
+        torch.set_float32_matmul_precision("high")
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    print("Using device:", device)
+    if device.type == "cuda":
+        print("GPU:", torch.cuda.get_device_name(0))
+    
+    data_loader = ShakespeareDataLoader(batch_size=cfg.batch_size, block_size=cfg.context_length)
+    cfg.vocab_size = data_loader.vocab_size()
+    print("Loaded data")
+
+    model = TransformerV2(config=cfg).to(device)
+    print(f"Built model with config {cfg}")
+
+    trainer = Trainer(
+        model=model,
+        data_loader=data_loader,
+        char_level_tokenize=True,
+        sample_prompts=cfg.sample_prompts,
+        sample_length=cfg.sample_length,
+        device=device,
+        use_amp=True,
+    )
+
+    print("Sample before training:\n")
+    trainer.print_sample()
+
     print("Starting training!")
     trainer.train(
         lr=cfg.learning_rate,

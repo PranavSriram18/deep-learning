@@ -1,3 +1,4 @@
+from data.base_loader import BaseLoader
 import torch  # type: ignore
 import torch.nn as nn  # type: ignore
 from collections import Counter
@@ -5,7 +6,7 @@ from typing import List, Tuple
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
-class ShakespeareDataLoader:
+class ShakespeareDataLoader(BaseLoader):
     def __init__(self, batch_size: int, block_size: int):
         self.batch_size = batch_size
         self.block_size = block_size
@@ -28,6 +29,9 @@ class ShakespeareDataLoader:
         return ''.join(self.itos[i] for i in l)
 
     def get_batch(self, split: str) -> Tuple[torch.Tensor, torch.Tensor]:
+        """
+        TODO: document shapes of x, y
+        """
         data = self.train_data if split == 'train' else self.val_data
         ix = torch.randint(len(data) - self.block_size, (self.batch_size,))
         x = torch.stack([data[i:i+self.block_size] for i in ix])

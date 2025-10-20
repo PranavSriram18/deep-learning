@@ -1,5 +1,6 @@
 from dataclasses import dataclass, field
 from enum import Enum
+from re import S
 from typing import List
 
 
@@ -72,4 +73,34 @@ class V2ModelConfig:
     use_ste: bool = True
     sample_length: int = 500
     sample_prompts: set[str] = field(default_factory=lambda: {"India is", "The United States is"})
-        
+
+def v2_shakespeare_config() -> V2ModelConfig:
+    cfg = V2ModelConfig()
+    cfg.batch_size = 32
+    cfg.learning_rate = 1e-3
+    cfg.print_every = 512
+    cfg.train_steps = 5000
+
+    cfg.embedding_dim = 128
+    cfg.vocab_embed_dim = 64
+    cfg.vocab_size = 65
+    cfg.num_heads_regular = 8
+    cfg.num_heads_sparse = 1
+    cfg.alpha = 4.0
+    cfg.t: int = 32  # 32-sparse in 512 dims
+
+    cfg.num_regular_init = 3
+    cfg.sliding_window_init = 16
+
+    cfg.num_sparse_blocks = 4
+    cfg.context_length = 96
+
+    cfg.num_regular_final = 2
+    cfg.sliding_window_final = 16
+
+    cfg.use_ste = True
+    cfg.sample_length = 500
+    cfg.sample_prompts: set[str] = field(default_factory=lambda: {"Julius: ", "On thy hands he wraithed. "})
+
+    return cfg
+
