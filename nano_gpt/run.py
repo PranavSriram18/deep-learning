@@ -186,4 +186,4 @@ def run_shakespeare_v2():
     trainer.print_sample()
 
 if __name__ == "__main__":
-    run_sparse_embedding_model()
+    run_shakespeare_v2()
