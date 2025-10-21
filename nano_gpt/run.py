@@ -1,5 +1,6 @@
 # nano_gpt/run.py
-from dataclasses import dataclass
+
+from nano_gpt.data_wt2_word import WT2DataLoader
 from nano_gpt.model_config import DatasetType, ModelConfig, TransformerType, V2ModelConfig, v2_shakespeare_config
 from nano_gpt.transformer_v2 import TransformerV2
 import torch  # type: ignore
@@ -7,7 +8,6 @@ import torch  # type: ignore
 from nano_gpt.trainer import Trainer
 from nano_gpt.data_loader import ShakespeareDataLoader
 from nano_gpt.transformer_model import TransformerModel
-from nano_gpt.data_wt2_word import WT2WordDataLoader
 from nano_gpt.sparse_embedding_model import SparseEmbeddingModel, SparseEmbeddingModelConfig
 
 # TODO - refactor 
@@ -29,7 +29,7 @@ def run_transformer(transformer_type: TransformerType, dataset_type: DatasetType
     
     vocab_cap = 50_000 if dataset_type == DatasetType.WT2_WORD else 65
     if dataset_type == DatasetType.WT2_WORD:
-        data_loader = WT2WordDataLoader(batch_size=cfg.batch_size, block_size=cfg.context_length, vocab_size=vocab_cap)
+        data_loader = WT2DataLoader(batch_size=cfg.batch_size, block_size=cfg.context_length, vocab_size=vocab_cap)
     elif dataset_type == DatasetType.SHAKESPEARE:
         data_loader = ShakespeareDataLoader(batch_size=cfg.batch_size, block_size=cfg.context_length)
     else:
@@ -77,7 +77,7 @@ def run_transformer_v2():
         print("GPU:", torch.cuda.get_device_name(0))
 
 
-    data_loader = WT2WordDataLoader(
+    data_loader = WT2DataLoader(
         batch_size=cfg.batch_size, block_size=cfg.context_length, vocab_size=cfg.vocab_size)
 
     model = TransformerV2(config=cfg)
@@ -116,7 +116,7 @@ def run_sparse_embedding_model():
         print("GPU:", torch.cuda.get_device_name(0))
 
 
-    data_loader = WT2WordDataLoader(
+    data_loader = WT2DataLoader(
         batch_size=cfg.batch_size, block_size=cfg.context_length, vocab_size=cfg.vocab_size)
 
     model = SparseEmbeddingModel(config=cfg)
