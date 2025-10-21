@@ -6,7 +6,7 @@ from nano_gpt.transformer_v2 import TransformerV2
 import torch  # type: ignore
 
 from nano_gpt.trainer import Trainer
-from nano_gpt.data_loader import ShakespeareDataLoader
+from nano_gpt.shakespeare_data_loader import ShakespeareDataLoader
 from nano_gpt.transformer_model import TransformerModel
 from nano_gpt.sparse_embedding_model import SparseEmbeddingModel, SparseEmbeddingModelConfig
 

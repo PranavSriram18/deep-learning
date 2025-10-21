@@ -1,7 +1,7 @@
 import torch # type: ignore
 
 from nano_gpt.trainer import Trainer  # type: ignore
-from nano_gpt.data_loader import DataLoader  # type: ignore
+from nano_gpt.shakespeare_data_loader import ShakespeareDataLoader  # type: ignore
 from nano_gpt.chunked_transformer import ChunkedTransformer  # type: ignore
 
 # To run: from deep-learning directory:
@@ -35,7 +35,7 @@ def main():
         num_layers=num_layers,
     )
     print("Built model", flush=True)
-    data_loader = DataLoader(batch_size, context_length)
+    data_loader = ShakespeareDataLoader(batch_size, context_length)
     print("Loaded data", flush=True)
 
     prompt_0 = """Hark! What light through yonder window breaks? 'Tis the east, and Juliet is the sun. Arise, fair sun, and kill the envious moon, who is already sick and pale with grief that thou, her maid, art far more fair than she. Be not her maid, since she is envious; her vestal livery is but sick and green, and none but fools do wear it. Cast it off! It is my lady; O, it is my love!"""
