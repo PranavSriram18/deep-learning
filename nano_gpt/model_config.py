@@ -100,7 +100,11 @@ def v2_shakespeare_config() -> V2ModelConfig:
 
     cfg.use_ste = True
     cfg.sample_length = 500
-    cfg.sample_prompts: set[str] = field(default_factory=lambda: {"Julius: ", "On thy hands he wraithed. "})
+    # Set concrete prompts (avoid assigning dataclasses.field here)
+    cfg.sample_prompts = [
+        "Julius: ",
+        "On thy hands he wraithed. ",
+    ]
 
     return cfg
 
