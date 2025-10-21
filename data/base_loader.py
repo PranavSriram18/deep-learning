@@ -19,7 +19,7 @@ class BaseLoader:
 
     def vocab_size(self) -> int:
         """Returns the effective vocab size for this data loader."""
-        return self.vocab_size
+        return self._vocab_size
 
     @abstractmethod
     def get_batch(self, mode: DataMode) -> tuple[torch.Tensor, torch.Tensor]:

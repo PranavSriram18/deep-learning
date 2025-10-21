@@ -37,11 +37,13 @@ class TransformerV2(nn.Module):
         self.Dv = config.vocab_embed_dim  # factorized vocab bottleneck
 
         # Embedding: V -> Dv -> D
-        self.token_embedding_table = nn.Embedding(self.V, self.Dv)
-        self.embed_proj            = nn.Linear(self.Dv, self.D, bias=False)
+        self._default_device = torch.device("cpu")
+        self._default_dtype = torch.float32
+        self.token_embedding_table = nn.Embedding(self.V, self.Dv, device=self._default_device, dtype=self._default_dtype)
+        self.embed_proj            = nn.Linear(self.Dv, self.D, bias=False, device=self._default_device, dtype=self._default_dtype)
 
         # Positional embeddings in D
-        self.position_embedding_table = nn.Embedding(self.C, self.D)
+        self.position_embedding_table = nn.Embedding(self.C, self.D, device=self._default_device, dtype=self._default_dtype)
 
         # Early: sliding-window (local) attention blocks with window Cwi
         self.sliding_window_stack_init = nn.Sequential(*[
@@ -80,11 +82,11 @@ class TransformerV2(nn.Module):
             for _ in range(self.num_regular_final)
         ])
 
-        self.ln_f = nn.LayerNorm(self.D)
+        self.ln_f = nn.LayerNorm(self.D, device=self._default_device, dtype=self._default_dtype)
 
         # Unembedding: D -> Dv -> V
-        self.unembed_proj = nn.Linear(self.D, self.Dv, bias=False)
-        self.lm_head      = nn.Linear(self.Dv, self.V, bias=False)
+        self.unembed_proj = nn.Linear(self.D, self.Dv, bias=False, device=self._default_device, dtype=self._default_dtype)
+        self.lm_head      = nn.Linear(self.Dv, self.V, bias=False, device=self._default_device, dtype=self._default_dtype)
 
     def forward(
         self,
