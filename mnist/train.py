@@ -3,7 +3,6 @@ import torch.nn as nn
 import torch.optim as optim
 from torchvision import datasets, transforms
 
-# TODO: Define your neural network class here
 class MnistNetwork(nn.Module):
 
     def __init__(self, input_size=784, hidden_dims=(128), num_classes=10):

@@ -1,23 +1,23 @@
 
+from layers.layer_config import AttentionConfig, MLPConfig
+
 import torch # type: ignore
 import torch.nn as nn # type: ignore
 from torch.nn import functional as F # type: ignore
 
-class Head(nn.Module):
+class AttentionHead(nn.Module):
     """
-    One head of self-attention.
+    One head of ordinary causal self-attention.
     H: head size 
     D: embedding dimension of X
     C: context length (block size)
-    dropout: dropout parameter
     """
-    def __init__(self, H: int, D: int, C: int, dropout: float):
+    def __init__(self, H: int, D: int, C: int):
         super().__init__()
         self.key = nn.Linear(D, H, bias=False)
         self.query = nn.Linear(D, H, bias=False)
         self.value = nn.Linear(D, H, bias=False)
         self.register_buffer('tril', torch.tril(torch.ones(C, C)))
-        self.dropout = nn.Dropout(dropout)
 
     def forward(self, X: torch.tensor) -> torch.tensor:
         # Linear projections here are all (B, C, D) -> (B, C, H)
@@ -43,7 +43,6 @@ class Head(nn.Module):
         att = att.masked_fill(self.tril[:C, :C] == 0, float('-inf')) # (B, C, C)
         # normalization is done along each row (amount ith attends must sum to 1)
         att = F.softmax(att, dim=-1) # (B, C, C)
-        att = self.dropout(att)
         # ith row of output is convex combination of rows of value matrix,
         # where weights of convex combination come from ith row of att
         out = att @ V # (B, C, C) @ (B, C, H) -> (B, C, H)
@@ -52,62 +51,39 @@ class Head(nn.Module):
 class MultiHeadAttention(nn.Module):
     """ multiple heads of self-attention in parallel """
 
-    def __init__(self, num_heads: int, D: int, C: int, dropout: float = 0.):
+    def __init__(self, config: AttentionConfig):
         super().__init__()
+        self.config = config
+        D, C, num_heads = config.D, config.C, config.num_heads
+        if D % num_heads != 0:
+            raise ValueError(f"{D=} not divisible by {num_heads=}")
         H = D // num_heads
-        self.heads = nn.ModuleList([Head(H, D, C, dropout) for _ in range(num_heads)])
+        self.heads = nn.ModuleList([AttentionHead(H, D, C) for _ in range(num_heads)])
         self.proj = nn.Linear(H * num_heads, D)
-        self.dropout = nn.Dropout(dropout)
 
     def forward(self, X: torch.tensor) -> torch.tensor:
         # Each head of attention writes to a disjoint subspace first, then we mix
         # (B, C, D) -> {cat[(B, C, H) (D/H) times} -> (B, C, D)
-        out = torch.cat([h(X) for h in self.heads], dim=-1)
-        out = self.dropout(self.proj(out))
-        return out
+        head_outputs = torch.cat([h(X) for h in self.heads], dim=-1)
+        out = self.proj(head_outputs)
+        return X + out  # residual update
 
 class MLP(nn.Module):
     """
-    A simple linear layer followed by a non-linearity.
-    (B, C, D) -> (B, C, D)
+    Ordinary Dense MLP layer.
+    Result is added to the residual stream after multiplication by config.lambda_coeff.
+    (B, C, D) -> (B, C, D') -> (B, C, D)
     """
-    def __init__(self, D: int, ff_expansion: int = 4, dropout: float = 0.):
+    def __init__(self, config: MLPConfig):
         super().__init__()
+        self.config = config
         self.net = nn.Sequential(
-            nn.Linear(D, ff_expansion * D),
+            nn.Linear(config.D, config.b),
             nn.ReLU(),
-            nn.Linear(ff_expansion * D, D),
-            nn.Dropout(dropout),
+            nn.Linear(config.b, config.D)
         )
 
     def forward(self, X: torch.tensor) -> torch.tensor:
         # (B, C, D) -> (B, C, D)
-        return self.net(X)
+        return X + self.config.lambda_coeff * self.net(X)
 
-class Block(nn.Module):
-    """
-    Transformer block: communication followed by computation.
-    (B, C, D) -> (B, C, D)
-    """
-
-    def __init__(self, D: int, num_heads: int, C: int, ff_expansion: int = 4, dropout: float = 0.):
-        """
-        D: embedding dimension
-        num_heads: the number of heads we'd like
-        C: context length
-        ff_expansion: ratio of hidden dim to input dim of feedforward block
-        dropout: dropout parameter
-        """
-        super().__init__()
-        self.attn = MultiHeadAttention(num_heads, D, C, dropout)
-        self.ffwd = MLP(D=D, ff_expansion=ff_expansion, dropout=dropout)
-        self.ln1 = nn.LayerNorm(D)
-        self.ln2 = nn.LayerNorm(D)
-
-    def forward(self, X: torch.tensor) -> torch.tensor:
-        # (B, C, D) -> (B, C, D)
-        # {norm, op, residual} for op in {attn, ff}
-        X = X + self.attn(self.ln1(X))
-        X = X + self.ffwd(self.ln2(X))
-        return X
-        

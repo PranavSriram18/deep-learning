@@ -1,0 +1,183 @@
+Built dictionary.
+First atom: tensor([ 0.6063, -0.4823, -0.2271,  0.5149,  0.2883], dtype=torch.float64)
+L_est=4.675948466457377
+Running test with x_true=tensor([ 0.000, -0.000,  0.000, -1.196, -0.972,  0.000, -0.337, -0.000, -0.000,
+        -0.000], dtype=torch.float64)
+
+Iteration 0:
+self.x=tensor([0., 0., 0., 0., 0., 0., 0., 0., 0., 0.], dtype=torch.float64)
+curr_idxs=tensor([], dtype=torch.int64)
+loss=1.123554003800529 
+
+
+Iteration 10:
+self.x=tensor([ 0.334,  0.000,  0.156, -0.184,  0.000,  0.000,  0.000,  0.000,  0.000,
+         0.000], dtype=torch.float64)
+curr_idxs=tensor([0, 3, 2])
+loss=0.660494999815364 
+
+
+Iteration 20:
+self.x=tensor([ 0.433,  0.000,  0.105, -0.165,  0.000,  0.000,  0.000,  0.000,  0.000,
+         0.000], dtype=torch.float64)
+curr_idxs=tensor([0, 3, 2])
+loss=0.6369460616562397 
+
+
+Iteration 30:
+self.x=tensor([ 0.513,  0.000,  0.000, -0.173, -0.179,  0.000,  0.000,  0.000,  0.000,
+         0.000], dtype=torch.float64)
+curr_idxs=tensor([0, 4, 3])
+loss=0.4277095569419964 
+
+
+Iteration 40:
+self.x=tensor([ 0.570,  0.000,  0.000, -0.286, -0.505,  0.000,  0.000,  0.000,  0.000,
+         0.000], dtype=torch.float64)
+curr_idxs=tensor([0, 4, 3])
+loss=0.19457259200631777 
+
+
+Iteration 50:
+self.x=tensor([ 0.556,  0.000,  0.000, -0.383, -0.646,  0.000,  0.000,  0.000,  0.000,
+         0.000], dtype=torch.float64)
+curr_idxs=tensor([4, 0, 3])
+loss=0.1388662790372605 
+
+
+Iteration 60:
+self.x=tensor([ 0.517,  0.000,  0.000, -0.461, -0.716,  0.000,  0.000,  0.000,  0.000,
+         0.000], dtype=torch.float64)
+curr_idxs=tensor([4, 0, 3])
+loss=0.11552227838916616 
+
+
+Iteration 70:
+self.x=tensor([ 0.475,  0.000,  0.000, -0.525, -0.756,  0.000,  0.000,  0.000,  0.000,
+         0.000], dtype=torch.float64)
+curr_idxs=tensor([4, 3, 0])
+loss=0.10155300784956536 
+
+
+Iteration 80:
+self.x=tensor([ 0.435,  0.000,  0.000, -0.577, -0.783,  0.000,  0.000,  0.000,  0.000,
+         0.000], dtype=torch.float64)
+curr_idxs=tensor([4, 3, 0])
+loss=0.09217970636635865 
+
+
+Iteration 90:
+self.x=tensor([ 0.400,  0.000,  0.000, -0.620, -0.803,  0.000,  0.000,  0.000,  0.000,
+         0.000], dtype=torch.float64)
+curr_idxs=tensor([4, 3, 0])
+loss=0.08571815752805893 
+
+
+Iteration 100:
+self.x=tensor([ 0.371,  0.000,  0.000, -0.656, -0.819,  0.000,  0.000,  0.000,  0.000,
+         0.000], dtype=torch.float64)
+curr_idxs=tensor([4, 3, 0])
+loss=0.08123778787400807 
+
+
+Iteration 110:
+self.x=tensor([ 0.346,  0.000,  0.000, -0.686, -0.832,  0.000,  0.000,  0.000,  0.000,
+         0.000], dtype=torch.float64)
+curr_idxs=tensor([4, 3, 0])
+loss=0.07812730711413053 
+
+
+Iteration 120:
+self.x=tensor([ 0.325,  0.000,  0.000, -0.711, -0.842,  0.000,  0.000,  0.000,  0.000,
+         0.000], dtype=torch.float64)
+curr_idxs=tensor([4, 3, 0])
+loss=0.07596730432027185 
+
+
+Iteration 130:
+self.x=tensor([ 0.308,  0.000,  0.000, -0.732, -0.851,  0.000,  0.000,  0.000,  0.000,
+         0.000], dtype=torch.float64)
+curr_idxs=tensor([4, 3, 0])
+loss=0.07446725707245493 
+
+
+Iteration 140:
+self.x=tensor([ 0.294,  0.000,  0.000, -0.749, -0.858,  0.000,  0.000,  0.000,  0.000,
+         0.000], dtype=torch.float64)
+curr_idxs=tensor([4, 3, 0])
+loss=0.07342551408905185 
+
+
+Iteration 150:
+self.x=tensor([ 0.282,  0.000,  0.000, -0.764, -0.864,  0.000,  0.000,  0.000,  0.000,
+         0.000], dtype=torch.float64)
+curr_idxs=tensor([4, 3, 0])
+loss=0.07270204948675758 
+
+
+Iteration 160:
+self.x=tensor([ 0.272,  0.000,  0.000, -0.776, -0.869,  0.000,  0.000,  0.000,  0.000,
+         0.000], dtype=torch.float64)
+curr_idxs=tensor([4, 3, 0])
+loss=0.07219962104950742 
+
+
+Iteration 170:
+self.x=tensor([ 0.263,  0.000,  0.000, -0.786, -0.873,  0.000,  0.000,  0.000,  0.000,
+         0.000], dtype=torch.float64)
+curr_idxs=tensor([4, 3, 0])
+loss=0.07185069677453707 
+
+
+Iteration 180:
+self.x=tensor([ 0.256,  0.000,  0.000, -0.794, -0.877,  0.000,  0.000,  0.000,  0.000,
+         0.000], dtype=torch.float64)
+curr_idxs=tensor([4, 3, 0])
+loss=0.07160837738453679 
+
+
+Iteration 190:
+self.x=tensor([ 0.250,  0.000,  0.000, -0.801, -0.879,  0.000,  0.000,  0.000,  0.000,
+         0.000], dtype=torch.float64)
+curr_idxs=tensor([4, 3, 0])
+loss=0.0714400924835896 
+
+
+Iteration 200:
+self.x=tensor([ 0.246,  0.000,  0.000, -0.807, -0.882,  0.000,  0.000,  0.000,  0.000,
+         0.000], dtype=torch.float64)
+curr_idxs=tensor([4, 3, 0])
+loss=0.07132322272787026 
+
+
+Iteration 210:
+self.x=tensor([ 0.242,  0.000,  0.000, -0.812, -0.884,  0.000,  0.000,  0.000,  0.000,
+         0.000], dtype=torch.float64)
+curr_idxs=tensor([4, 3, 0])
+loss=0.07124205953540368 
+
+
+Iteration 220:
+self.x=tensor([ 0.238,  0.000,  0.000, -0.816, -0.885,  0.000,  0.000,  0.000,  0.000,
+         0.000], dtype=torch.float64)
+curr_idxs=tensor([4, 3, 0])
+loss=0.07118569367948896 
+
+
+Iteration 230:
+self.x=tensor([ 0.235,  0.000,  0.000, -0.819, -0.887,  0.000,  0.000,  0.000,  0.000,
+         0.000], dtype=torch.float64)
+curr_idxs=tensor([4, 3, 0])
+loss=0.07114654896848789 
+
+
+Iteration 240:
+self.x=tensor([ 0.233,  0.000,  0.000, -0.822, -0.888,  0.000,  0.000,  0.000,  0.000,
+         0.000], dtype=torch.float64)
+curr_idxs=tensor([4, 3, 0])
+loss=0.0711193639222486 
+
+Final result:
+self.x=tensor([ 0.231,  0.000,  0.000, -0.824, -0.889,  0.000,  0.000,  0.000,  0.000,
+         0.000], dtype=torch.float64)
+loss=0.07110048457124218

@@ -1,9 +1,9 @@
 # nano_gpt/sliding_window_attn.py
+from layers.layer_config import AttentionConfig
 import torch  # type: ignore
 import torch.nn as nn  # type: ignore
 from torch.nn import functional as F  # type: ignore
 
-from nano_gpt.transformer_blocks import MLP
 
 class SlidingWindowHead(nn.Module):
     """
@@ -62,7 +62,6 @@ class SlidingWindowHead(nn.Module):
         out = (att.unsqueeze(2) @ Vwin).squeeze(2)
         return out
 
-
 class SlidingWindowAttention(nn.Module):
     """
     Multi-head local causal attention with window Cw.
@@ -71,31 +70,18 @@ class SlidingWindowAttention(nn.Module):
       X:   (B, T, D)
       out: (B, T, D)
     """
-    def __init__(self, D: int, num_heads: int, Cw: int, dropout: float = 0.0):
+    def __init__(self, config: AttentionConfig):
         super().__init__()
+        D, C, num_heads = config.D, config.C, config.num_heads
         assert D % num_heads == 0, "Embedding dim D must be divisible by num_heads"
         H = D // num_heads
         self.heads = nn.ModuleList(
-            [SlidingWindowHead(H=H, D=D, Cw=Cw) for _ in range(num_heads)]
+            [SlidingWindowHead(H=H, D=D, Cw=C) for _ in range(num_heads)]
         )
         self.proj = nn.Linear(D, D)
-        self.dropout = nn.Dropout(dropout)
 
     def forward(self, X: torch.Tensor) -> torch.Tensor:
         # Concatenate head outputs and project back to model dim
-        out = torch.cat([h(X) for h in self.heads], dim=-1)  # (B, T, D)
-        out = self.dropout(self.proj(out))                   # (B, T, D)
-        return out
-
-class SlidingWindowBlock(nn.Module):
-    def __init__(self, D: int, num_heads: int, Cw: int, ff_expansion: int = 4):
-        super().__init__()
-        self.attn = SlidingWindowAttention(D=D, num_heads=num_heads, Cw=Cw)
-        self.ffwd = MLP(D=D, ff_expansion=ff_expansion, dropout=0.0)
-        self.ln1 = nn.LayerNorm(D)
-        self.ln2 = nn.LayerNorm(D)
-
-    def forward(self, X: torch.Tensor) -> torch.Tensor:
-        X = X + self.attn(self.ln1(X))
-        X = X + self.ffwd(self.ln2(X))
-        return X
+        head_outputs = torch.cat([h(X) for h in self.heads], dim=-1)  # (B, T, D)
+        out = self.proj(head_outputs)                  # (B, T, D)
+        return X + out
