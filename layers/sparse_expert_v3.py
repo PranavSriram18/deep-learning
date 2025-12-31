@@ -118,7 +118,7 @@ class TopKAutoencodeInhibitor(nn.Module):
             "recon_energy": recon_energy,
             "uncaptured_energy": uncaptured_energy,
             "balance_entropy": balance_entropy,
-            "aux_loss": uncaptured_energy + (1. - balance_entropy),
+            "aux_loss": uncaptured_energy + 0.1 * (1. - balance_entropy),
         }
         return h_sparse, topk_idxs, aux
 
