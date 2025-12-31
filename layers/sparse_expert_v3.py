@@ -84,10 +84,10 @@ class TopKAutoencodeInhibitor(nn.Module):
           aux: dict of scalars/tensors
         """
         # Energy per expert: (N, m)
-        energy_sq = (h_all * h_all).sum(dim=-1)
+        energy = (h_all * h_all).sum(dim=-1)
 
         # Top-k experts by energy
-        topk_vals, topk_idxs = energy_sq.topk(self.k, dim=-1)  # (N, k)
+        topk_vals, topk_idxs = energy.topk(self.k, dim=-1)  # (N, k)
 
         # Gather coefficients for selected experts: (N, k, b)
         idxs_expand = topk_idxs.unsqueeze(-1).expand(-1, -1, self.b)
@@ -98,8 +98,16 @@ class TopKAutoencodeInhibitor(nn.Module):
         x_hat = torch.einsum("nkdb,nkb->nd", V_active, h_sparse)  # (N, D)
 
         # Uncaptured energy: ||x - x_hat||^2 per token
+        # since x is unit norm, scale is O(1)
         resid = x_flat - x_hat
         uncaptured_energy = (resid * resid).sum(dim=-1).mean()
+
+        # Load balancing metric: entropy of average per-expert energy distribution
+        # higher is better; max possible is 1
+        avg_energy_per_expert = energy.mean(dim=0)  # (m,)
+        denom = avg_energy_per_expert.sum().clamp_min(self.eps)
+        probs = (avg_energy_per_expert / denom).clamp_min(self.eps)  # (m,)
+        balance_entropy = -(probs * torch.log(probs)).sum() / torch.log(torch.tensor(self.m, dtype=probs.dtype, device=probs.device))
 
         # Captured energy proxies
         captured_energy_proj = topk_vals.sum(dim=-1).mean()
@@ -109,7 +117,8 @@ class TopKAutoencodeInhibitor(nn.Module):
             "captured_energy_proj": captured_energy_proj,
             "recon_energy": recon_energy,
             "uncaptured_energy": uncaptured_energy,
-            "aux_loss": uncaptured_energy,
+            "balance_entropy": balance_entropy,
+            "aux_loss": uncaptured_energy + (1. - balance_entropy),
         }
         return h_sparse, topk_idxs, aux
 

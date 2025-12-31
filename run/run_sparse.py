@@ -70,7 +70,7 @@ def run():
         use_factorized_embeddings=use_factorized_embeddings,
         vocab_embed_dim=vocab_embed_dim,
         tie_embeddings=tie_embeddings,
-        aux_loss_weight=0.25,
+        aux_loss_weight=1.,
     )
 
     model = TransformerModel(config=transformer_cfg).to(device)
