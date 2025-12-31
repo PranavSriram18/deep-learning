@@ -83,7 +83,8 @@ class MLP(nn.Module):
             nn.Linear(config.b, config.D)
         )
 
-    def forward(self, X: torch.tensor) -> torch.tensor:
-        # (B, C, D) -> (B, C, D)
-        return X + self.config.lambda_coeff * self.net(X)
+    def forward(self, X: torch.tensor) -> tuple[torch.tensor, dict[str, torch.Tensor]]:
+        # (B, C, D) -> (B, C, D), no aux for dense MLP
+        out = X + self.config.lambda_coeff * self.net(X)
+        return out, {}
 

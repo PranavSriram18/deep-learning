@@ -51,10 +51,10 @@ class TransformerBlock(nn.Module):
         self.ln1 = nn.LayerNorm(attn_config.D)
         self.ln2 = nn.LayerNorm(attn_config.D)
 
-    def forward(self, X: torch.tensor) -> torch.tensor:
+    def forward(self, X: torch.tensor) -> tuple[torch.tensor, dict[str, torch.Tensor]]:
         # (B, C, D) -> (B, C, D)
         # {norm, residual op} for op in {attn, ff}
         X = self.attn(self.ln1(X))
-        X = self.mlp(self.ln2(X))
-        return X
+        X, aux = self.mlp(self.ln2(X))
+        return X, aux
         

@@ -17,10 +17,10 @@ def run():
 
     # Training settings (separate config for Trainer)
     train_cfg = TrainConfig(
-        batch_size=32,
+        batch_size=16,
         learning_rate=1e-3,
         print_every=512,
-        train_steps=5000,
+        train_steps=15000,
         sample_length=500,
         sample_prompts=[
             "Julius: ",
@@ -39,8 +39,8 @@ def run():
     )
     mlp_cfg = MLPConfig(
         D=D,
-        m=16,                        # total experts
-        k=4,                          # active experts
+        m=32,                        # total experts
+        k=8,                          # active experts
         b=16,                         # expert width
         mlp_type=MLPType.SPARSE_EXPERT_V3,
     )
@@ -69,7 +69,8 @@ def run():
         num_layers=L,
         use_factorized_embeddings=use_factorized_embeddings,
         vocab_embed_dim=vocab_embed_dim,
-        tie_embeddings=tie_embeddings
+        tie_embeddings=tie_embeddings,
+        aux_loss_weight=0.25,
     )
 
     model = TransformerModel(config=transformer_cfg).to(device)

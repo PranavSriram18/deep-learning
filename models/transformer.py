@@ -9,6 +9,13 @@ from typing import Any, Optional, Tuple
 
 torch.manual_seed(1337)
 
+#
+# Convention: Any auxiliary loss term surfaced by layers should be exposed
+# under keys with the suffix defined below. This enables the model to
+# aggregate and weight aux losses in a uniform way.
+#
+AUX_LOSS_SUFFIX = "aux_loss"
+
 class TransformerModel(nn.Module):
     def __init__(self, config: TransformerConfig):
         super().__init__()
@@ -51,7 +58,7 @@ class TransformerModel(nn.Module):
         self,
         idx: torch.Tensor,                 # (B, T) long
         targets: Optional[torch.Tensor] = None
-    ) -> Tuple[torch.Tensor, Optional[torch.Tensor]]:
+    ) -> Tuple[torch.Tensor, Optional[torch.Tensor], torch.Tensor]:
 
         assert idx.dtype == torch.long, "idx must be Long for embedding"
         B, T = idx.shape
@@ -84,16 +91,30 @@ class TransformerModel(nn.Module):
         else:
             logits = self.lm_head(x)                                 # (B, T, V)
 
+        # Auxiliary loss from blocks (0 when disabled)
+        aux = self.aux_loss(aux_dict)
         if targets is None:
-            return logits, None
+            return logits, None, aux
 
         assert targets.shape == idx.shape
         loss = F.cross_entropy(logits.view(B * T, self.V), targets.view(B * T))
-        loss = loss + self.aux_loss(aux_dict)
-        return logits, loss
+        loss = loss + aux
+        return logits, loss, aux
 
     def aux_loss(self, aux_dict: dict[str, Any]) -> torch.Tensor:
-        return 0  # TODO
+        # Aggregate auxiliary losses (e.g., from SparseExpertV3) with a configurable weight
+        weight = getattr(self.config, "aux_loss_weight", 0.0)
+        if weight == 0.0:
+            return torch.tensor(0.0, device=next(self.parameters()).device)
+        aux_terms = []
+        for k, v in aux_dict.items():
+            if k.endswith(AUX_LOSS_SUFFIX) and isinstance(v, torch.Tensor):
+                aux_terms.append(v)
+        if not aux_terms:
+            return torch.tensor(0.0, device=next(self.parameters()).device)
+        # average auxiliary loss across blocks/layers to keep scale stable
+        aux_mean = torch.stack([t.to(next(self.parameters()).device) for t in aux_terms]).mean()
+        return weight * aux_mean
 
     def generate(
         self, idx: torch.Tensor, max_new_tokens: int, greedy: bool = False

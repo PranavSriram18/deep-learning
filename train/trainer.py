@@ -65,19 +65,19 @@ class Trainer:
 
             if self.use_amp:
                 with torch.amp.autocast(device_type="cuda"):
-                    logits, loss = self.model(xb, yb)
+                    logits, loss, aux_loss = self.model(xb, yb)
                 self.scaler.scale(loss).backward()
                 self.scaler.step(optimizer)
                 self.scaler.update()
             else:
-                logits, loss = self.model(xb, yb)
+                logits, loss, aux_loss = self.model(xb, yb)
                 loss.backward()
                 optimizer.step()
 
             self.scheduler.step()
 
             if (i % print_every == 0):
-                print(f"step {i} | loss {loss.item():.4f} | logits[0,-1,:5]={logits[0, -1, :5].detach().cpu().tolist()}")
+                print(f"step {i} | loss {loss.item():.4f} (aux {aux_loss.item():.4f}) | logits[0,-1,:5]={logits[0, -1, :5].detach().cpu().tolist()}")
                 self.print_sample(i, loss.item())
                 # self._maybe_save_checkpoint(loss, i) # TODO
 
@@ -93,9 +93,9 @@ class Trainer:
                 Y = Y.to(self.device, non_blocking=True)
                 if self.use_amp:
                     with torch.amp.autocast(device_type="cuda"):
-                        _, loss = self.model(X, Y)
+                        _, loss, aux_loss = self.model(X, Y)
                 else:
-                    _, loss = self.model(X, Y)
+                    _, loss, aux_loss = self.model(X, Y)
                 losses[k] = float(loss.item())
             out[split] = float(losses.mean().item())
         self.model.train()
