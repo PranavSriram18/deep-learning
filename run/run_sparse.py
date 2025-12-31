@@ -9,7 +9,7 @@ def run():
     # Top-level transformer settings
     D = 128                   # embedding_dim
     C = 64                    # context_length
-    L = 4                     # num_layers
+    L = 2                     # num_layers
     num_heads = 8
     tie_embeddings = True
     use_factorized_embeddings = False
@@ -17,9 +17,9 @@ def run():
 
     # Training settings (separate config for Trainer)
     train_cfg = TrainConfig(
-        batch_size=16,
+        batch_size=32,
         learning_rate=1e-3,
-        print_every=512,
+        print_every=400,
         train_steps=15000,
         sample_length=500,
         sample_prompts=[
@@ -39,9 +39,9 @@ def run():
     )
     mlp_cfg = MLPConfig(
         D=D,
-        m=32,                        # total experts
+        m=256,                        # total experts
         k=8,                          # active experts
-        b=16,                         # expert width
+        b=8,                         # expert width
         mlp_type=MLPType.SPARSE_EXPERT_V3,
     )
     block_cfg = BlockConfig(
