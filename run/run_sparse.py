@@ -39,7 +39,7 @@ def run():
     )
     mlp_cfg = MLPConfig(
         D=D,
-        m=32,                        # total experts
+        m=64,                        # total experts
         k=8,                          # active experts
         b=16,                         # expert width
         mlp_type=MLPType.SPARSE_EXPERT_V3,
