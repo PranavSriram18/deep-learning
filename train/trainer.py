@@ -1,31 +1,40 @@
 import torch
 import torch.nn as nn
-from typing import Dict, List, Optional
+from dataclasses import dataclass
+from typing import Dict, Optional
 
 from data.base_loader import BaseLoader, DataMode
 from nano_gpt.generator import Generator
+
+@dataclass
+class TrainConfig:
+    batch_size: int
+    learning_rate: float
+    print_every: int
+    train_steps: int
+    sample_length: int
+    sample_prompts: list[str]
+    char_level_tokenize: bool
+    use_amp: bool
 
 class Trainer:
     def __init__(
         self,
         model: nn.Module,
         data_loader: BaseLoader,
-        char_level_tokenize: bool,
-        sample_prompts: List[str],
-        sample_length: int = 512,
+        train_config: TrainConfig,
         device: Optional[torch.device] = None,
-        use_amp: bool = True,
         checkpoint_path: Optional[str] = None
     ):
         # Resolve and store device
         self.device = device or next(model.parameters()).device
         self.model = model.to(self.device)
         self.loader = data_loader
-        self.char_level_tokenize = char_level_tokenize
-        self.sample_length = sample_length
-        self.use_amp = use_amp and (self.device.type == "cuda")
+        self.char_level_tokenize = train_config.char_level_tokenize
+        self.sample_length = train_config.sample_length
+        self.use_amp = train_config.use_amp and (self.device.type == "cuda")
 
-        self.generator = Generator(self.model, self.loader, self.char_level_tokenize, sample_prompts)
+        self.generator = Generator(self.model, self.loader, self.char_level_tokenize, train_config.sample_prompts)
 
         # AMP scaler (no-op when enabled=False)
         self.scaler = torch.amp.GradScaler(enabled=self.use_amp)

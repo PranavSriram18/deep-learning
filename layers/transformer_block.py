@@ -1,6 +1,7 @@
 from typing import TypeAlias, Union
 from layers.sliding_window_attn import SlidingWindowAttention
 from layers.sparse_expert import SparseExpertLayer
+from layers.sparse_expert_v3 import SparseExpertV3
 from layers.standard_layers import MLP, MultiHeadAttention
 import torch  # type: ignore
 from torch import nn  # type: ignore
@@ -26,6 +27,8 @@ def build_mlp_layer(mlp_config: MLPConfig) -> MLPLayer:
         return MLP(mlp_config)
     elif mlp_config.mlp_type == MLPType.SPARSE_EXPERT:
         return SparseExpertLayer(mlp_config)
+    elif mlp_config.mlp_type == MLPType.SPARSE_EXPERT_V3:
+        return SparseExpertV3(mlp_config)
     else:
         raise ValueError("unsupported mlp type")
 

@@ -5,6 +5,7 @@ class MLPType(Enum):
     DENSE = "dense"  # ordinary dense MLP
     MOE = "moe"
     SPARSE_EXPERT = "sparse_expert"
+    SPARSE_EXPERT_V3 = "sparse_expert_v3"
 
 class AttentionType(Enum):
     MHA = "mha"  # ordinary multi-head attention
@@ -19,9 +20,9 @@ class MLPConfig:
     m: int  # total number of experts
     k: int  # active experts
     b: int  # expert width
-    k_f: int  # fixed experts
     mlp_type: MLPType
-    lambda_coeff: float   # layer forward returns x + lambda_coeff * mlp(x)
+    k_f: int = 0  # fixed experts
+    lambda_coeff: float = 1.   # layer forward returns x + lambda_coeff * mlp(x)
 
     @staticmethod
     def dense_default(D: int = 256):

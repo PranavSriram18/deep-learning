@@ -10,7 +10,7 @@ class ShakespeareDataLoader(BaseLoader):
     def __init__(self, batch_size: int, block_size: int):
         self.batch_size = batch_size
         self.block_size = block_size
-        with open("nano_gpt/input.txt", 'r', encoding='utf8') as f:
+        with open("data/input.txt", 'r', encoding='utf8') as f:
             self.text = f.read()
         c = Counter(self.text)
         print(f"Char freqs:\n {c}")

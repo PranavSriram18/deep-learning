@@ -33,18 +33,18 @@ class Teacher(nn.Module):
     T(x) = norm( W2 @ nlin(W1 @ x) ), with fixed 3x3 W1, W2.
     Both input and output lie on S^2.
     """
-    def __init__(self, seed: int = 117):
+    def __init__(self, D: int, seed: int = 117):
         super().__init__()
         g = torch.Generator().manual_seed(seed)
-        W1 = torch.randn(3, 3, generator=g)
+        W1 = torch.randn(D, D, generator=g)
         W1 = l2_normalize(W1, dim=0)
-        W2 = torch.randn(3, 3, generator=g)
+        W2 = torch.randn(D, D, generator=g)
         W2 = l2_normalize(W2, dim=0)
-        W3 = torch.randn(3, 3, generator=g)
+        W3 = torch.randn(D, D, generator=g)
         W3 = l2_normalize(W3, dim=0)
-        W4 = torch.randn(3, 3, generator=g)
+        W4 = torch.randn(D, D, generator=g)
         W4 = l2_normalize(W4, dim=0)
-        W5 = torch.randn(3, 3, generator=g)
+        W5 = torch.randn(D, D, generator=g)
         W5 = l2_normalize(W5, dim=0)
         self.register_buffer("W1", W1)
         self.register_buffer("W2", W2)
@@ -56,17 +56,15 @@ class Teacher(nn.Module):
         """
         Return layer 5 and 2 states.
         """
-        h1 = x @ self.W1.T  # (n, 3) -> (n, 3)
-        h1_prime = l2_normalize(torch.relu(h1) - 0.5 * torch.relu(-h1), dim=1)
-        h2 = h1_prime @ self.W2.T  # (n, 3) -> (n, 3)
-        h2_prime = l2_normalize(torch.relu(h2) - 0.5 * torch.relu(-h2), dim=1)
-        h3 = h2_prime @ self.W3.T  # (n, 3) -> (n, 3)
-        h3_prime = l2_normalize(torch.relu(h3) - 0.5 * torch.relu(-h3), dim=1)
-        h4 = h3_prime @ self.W4.T  # (n, 3) -> (n, 3)
-        h4_prime = l2_normalize(torch.relu(h4) - 0.5 * torch.relu(-h4), dim=1)
-        h5 = h4_prime @ self.W5.T  # (n, 3) -> (n, 3)
-        h5_prime = l2_normalize(torch.relu(h5) - 0.5 * torch.relu(-h5), dim=1)
-        return h5_prime, h2_prime 
+        def nlin(x: torch.Tensor) -> torch.Tensor:
+            return l2_normalize(torch.relu(x) - 0.5 * torch.relu(-x), dim=1)
+
+        h1 = nlin(x @ self.W1.T)  # (B, D) -> (B, D)
+        h2 = nlin(h1 @ self.W2.T) 
+        h3 = nlin(h2 @ self.W3.T)
+        h4 = nlin(h3 @ self.W4.T)
+        h5 = nlin(h4 @ self.W5.T)
+        return h5, h2 
 
 
 # ---------- small wrapper model ----------
@@ -96,15 +94,19 @@ def mse_loss(pred, target):
     return torch.nn.functional.mse_loss(pred, target)
 
 # ---------- data ----------
-def sample_unit_sphere(n: int, device: torch.device):
-    x = torch.randn(n, 3, device=device)
+def sample_unit_sphere(n: int, D: int, device: torch.device):
+    """
+    Sample n points on D dimensional unit sphere. 
+    """
+    x = torch.randn(n, D, device=device)
     return l2_normalize(x, dim=-1)
 
 # ---------- plotting ----------
 def make_figure_live(x_eval, y_eval, layer0, layer1):
     fig, axs = plt.subplots(1, 3, figsize=(15, 5))
     for ax in axs:
-        ax.set_xlabel("dim 0"); ax.set_ylabel("dim 1"); ax.set_aspect("equal", adjustable="box")
+        ax.set_xlabel("dim 0"); ax.set_ylabel("dim 1"); ax.set_aspect("equal") # adjustable="box"
+        ax.set_xlim(-1, 1); ax.set_ylim(-1, 1)
 
     # Left: fixed targets (teal), dynamic preds (red)
     axs[0].set_title("Targets (teal) vs Predictions (red)")
@@ -114,26 +116,31 @@ def make_figure_live(x_eval, y_eval, layer0, layer1):
 
     # Middle: teacher inputs y (fixed) + layer0 V columns
     axs[1].set_title("Layer 0: y (gray) and V⁰ readers")
-    ye2 = y_eval[:, :2].detach().cpu()
-    axs[1].scatter(ye2[:, 0], ye2[:, 1], s=6, alpha=0.25, c="0.5", label=None)
-
+    ye = y_eval[:, :].detach().cpu()
     V0 = layer0.V
     D0, m0, b0 = V0.shape
-    V0cols2 = V0.reshape(D0, m0 * b0).T[:, :2].detach().cpu()
-    v0_pts = axs[1].scatter(V0cols2[:, 0], V0cols2[:, 1], s=18, alpha=0.9, c="C1", label=None)
+    V0cols = V0.reshape(D0, m0 * b0).T[:, :].detach().cpu()
 
-    # Right: inputs to layer1 (change as layer0 trains) + layer1 V columns
-    axs[2].set_title("Layer 1: y¹ (gray) and V¹ readers")
-    with torch.no_grad():
-        y1_eval, _ = layer0(y_eval)               # residual output of layer0
-        y1_eval = l2_normalize(y1_eval, dim=-1)   # match your model's norm step
-    y1e2 = y1_eval[:, :2].detach().cpu()
-    y1_gray = axs[2].scatter(y1e2[:, 0], y1e2[:, 1], s=6, alpha=0.25, c="0.5", label="y¹ eval")
+    axs[1].scatter(ye[:, 0], ye[:, 1], s=6, alpha=0.25, c="0.5", label=None)
+    v0_pts = axs[1].scatter(V0cols[:, 0], V0cols[:, 1], s=18, alpha=0.9, c="C1", label=None)
 
-    V1 = layer1.V
-    D1, m1, b1 = V1.shape
-    V1cols2 = V1.reshape(D1, m1 * b1).T[:, :2].detach().cpu()
-    v1_pts = axs[2].scatter(V1cols2[:, 0], V1cols2[:, 1], s=18, alpha=0.9, c="C2", label="V¹ cols")
+    # Right: like middle, but next 2 coords
+    axs[2].set_title("Layer 0: y (next 2 coords) and V⁰ readers")
+    axs[2].scatter(ye[:, 2], ye[:, 3], s=6, alpha=0.25, c="0.5", label=None)
+    v0_pts2 = axs[2].scatter(V0cols[:, 2], V0cols[:, 3], s=18, alpha=0.9, c="C1", label=None)
+
+    # # Right: inputs to layer1 (change as layer0 trains) + layer1 V columns
+    # axs[2].set_title("Layer 1: y¹ (gray) and V¹ readers")
+    # with torch.no_grad():
+    #     y1_eval, _ = layer0(y_eval)               # residual output of layer0
+    #     y1_eval = l2_normalize(y1_eval, dim=-1)   # match model's norm step
+    # y1e2 = y1_eval[:, :2].detach().cpu()
+    # y1_gray = axs[2].scatter(y1e2[:, 0], y1e2[:, 1], s=6, alpha=0.25, c="0.5", label="y¹ eval")
+
+    # V1 = layer1.V
+    # D1, m1, b1 = V1.shape
+    # V1cols2 = V1.reshape(D1, m1 * b1).T[:, :2].detach().cpu()
+    # v1_pts = axs[2].scatter(V1cols2[:, 0], V1cols2[:, 1], s=18, alpha=0.9, c="C2", label="V¹ cols")
 
     fig.subplots_adjust(left=0.12, right=0.88, wspace=0.30, top=0.85)
 
@@ -152,8 +159,8 @@ def make_figure_live(x_eval, y_eval, layer0, layer1):
     artists = {
         "red": red,          # left preds
         "v0_pts": v0_pts,    # middle V0 points
-        "y1_gray": y1_gray,  # right gray y1 cloud
-        "v1_pts": v1_pts,    # right V1 points
+        "v0_pts2": v0_pts2,  # right V0 points
+#"v1_pts": v1_pts,    # right V1 points
     }
     return fig, axs, artists
 
@@ -167,19 +174,23 @@ def update_live_plot(fig, axs, artists, x_eval, y_eval, pred_eval, layer0, layer
     # middle: update V0 points
     V0 = layer0.V
     D0, m0, b0 = V0.shape
-    V0cols2 = V0.reshape(D0, m0 * b0).T[:, :2].detach().cpu()
-    artists["v0_pts"].set_offsets(V0cols2)
+    V0cols = V0.reshape(D0, m0 * b0).T[:, :].detach().cpu()
+    artists["v0_pts"].set_offsets(V0cols[:, :2])
+
+    # right: update V0 next cols
+    artists["v0_pts2"].set_offsets(V0cols[:, 2:4])
+
 
     # right: update y1 gray (depends on layer0) and V1 points
-    y1_eval, _ = layer0(y_eval)
-    y1_eval = l2_normalize(y1_eval, dim=-1)
-    y1e2 = y1_eval[:, :2].detach().cpu()
-    artists["y1_gray"].set_offsets(y1e2)
+    # y1_eval, _ = layer0(y_eval)
+    # y1_eval = l2_normalize(y1_eval, dim=-1)
+    # y1e2 = y1_eval[:, :2].detach().cpu()
+    # artists["y1_gray"].set_offsets(y1e2)
 
-    V1 = layer1.V
-    D1, m1, b1 = V1.shape
-    V1cols2 = V1.reshape(D1, m1 * b1).T[:, :2].detach().cpu()
-    artists["v1_pts"].set_offsets(V1cols2)
+    # V1 = layer1.V
+    # D1, m1, b1 = V1.shape
+    # V1cols2 = V1.reshape(D1, m1 * b1).T[:, :2].detach().cpu()
+    # artists["v1_pts"].set_offsets(V1cols2)
 
     fig.canvas.draw(); fig.canvas.flush_events()
     plt.pause(0.01)
@@ -188,6 +199,7 @@ def update_live_plot(fig, axs, artists, x_eval, y_eval, pred_eval, layer0, layer
 # ---------- training loop ----------
 @dataclass
 class TrainCfg:
+    D: int = 4
     n_train: int = 2048  # temp test
     n_val: int = 1024  # temp test
     batch_size: int = 128
@@ -195,7 +207,7 @@ class TrainCfg:
     log_every: int = 100
     lr: float = 8e-4
     # single coeff applied to layer's aux_loss. range 1e-3 to ~0.5
-    aux_coeff: float = 0.         
+    aux_coeff: float = 0.2         
     plot_every: int = 10
     out_dir: str = "out_sparse"
 
@@ -206,12 +218,11 @@ def run():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     # teacher and data
-    teacher = Teacher(seed=seed).to(device)
-
     train_cfg = TrainCfg()
+    teacher = Teacher(D=train_cfg.D, seed=seed).to(device)
     os.makedirs(train_cfg.out_dir, exist_ok=True)
 
-    raw_data = sample_unit_sphere(train_cfg.n_train, device)
+    raw_data = sample_unit_sphere(train_cfg.n_train, train_cfg.D, device)
     # teacher maps raw_data -> x -> ... -> y
     # student is tasked with learning F(y) ≈ x
     y_train, x_train = teacher(raw_data)
@@ -223,14 +234,13 @@ def run():
 
     # layer config (3D, small K for demo)
     # total num params = D * m * b * 2
-    layer_cfg = MLPConfig.sparse_default(D=3)
-    layer_cfg.D = 3
+    layer_cfg = MLPConfig.sparse_default(D=train_cfg.D)
     layer_cfg.b = 1
-    layer_cfg.m = 16
+    layer_cfg.m = 8
     layer_cfg.k = 4
     layer_cfg.k_f = 0
     layer_cfg.lambda_coeff = 2.
-    layer_cfg.coherence_coeff = 0.0
+    layer_cfg.coherence_coeff = 0.05
 
     model = SparseInvertor(layer_cfg).to(device)
     opt = torch.optim.AdamW(model.parameters(), lr=train_cfg.lr)
@@ -293,11 +303,17 @@ def run():
     with torch.no_grad():
         model.eval()
         pred_eval, _ = model(y_eval)
-    
+
+    # print final expert locations
+    V0 = model.layer0.V
+    D0, m0, b0 = V0.shape
+    V0cols2 = V0.reshape(D0, m0 * b0).T[:, :].detach().cpu()
+    print(f"final layer 0 expert locations: {V0cols2}")
+
     # final plot
     plt.ioff()
     plt.show()  # blocks until the window is closed
-    
+
 
 if __name__ == "__main__":
     run()
