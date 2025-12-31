@@ -14,7 +14,7 @@ class TransformerConfig:
     tie_embeddings: bool
     # Weight for any auxiliary losses emitted by layers (e.g., SparseExpertV3).
     # Set to 0.0 to disable. The model will average aux losses across layers to keep scale stable.
-    aux_loss_weight: float = 0.0
+    aux_loss_weight: float = 0.25
 
     def __post_init__(self):
         assert self.embedding_dim == self.block_config.mlp_config.D

@@ -127,7 +127,7 @@ class TransformerModel(nn.Module):
         idx = idx.to(dev)
         for _ in range(max_new_tokens):
             idx_cond = idx[:, -self.C:]
-            logits, _ = self(idx_cond)
+            logits, _, _ = self(idx_cond)
             logits = logits[:, -1, :]
             probs = F.softmax(logits, dim=-1)
             idx_next = torch.multinomial(probs, num_samples=1)
