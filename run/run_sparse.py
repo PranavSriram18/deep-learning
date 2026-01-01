@@ -5,12 +5,15 @@ from models.transformer_config import TransformerConfig
 from layers.layer_config import BlockConfig, MLPConfig, AttentionConfig, AttentionType, MLPType
 from train.trainer import Trainer, TrainConfig
 
-def run():
-    # Top-level transformer settings
-    D = 128                   # embedding_dim
-    C = 64                    # context_length
-    L = 2                     # num_layers
-    num_heads = 8
+def run(
+    D: int = 128,
+    C: int = 64,
+    L: int = 2,
+    num_heads: int = 8,
+    m: int = 256,
+    k: int = 32,
+    b: int = 8
+):
     tie_embeddings = True
     use_factorized_embeddings = False
     vocab_embed_dim = D       # when not factorized, Dv must equal D
@@ -39,9 +42,9 @@ def run():
     )
     mlp_cfg = MLPConfig(
         D=D,
-        m=256,                        # total experts
-        k=8,                          # active experts
-        b=8,                         # expert width
+        m=m,                        # total experts
+        k=k,                          # active experts
+        b=b,                         # expert width
         mlp_type=MLPType.SPARSE_EXPERT_V3,
     )
     block_cfg = BlockConfig(
@@ -70,7 +73,7 @@ def run():
         use_factorized_embeddings=use_factorized_embeddings,
         vocab_embed_dim=vocab_embed_dim,
         tie_embeddings=tie_embeddings,
-        aux_loss_weight=1.,
+        aux_loss_weight=0.5,
     )
 
     model = TransformerModel(config=transformer_cfg).to(device)
