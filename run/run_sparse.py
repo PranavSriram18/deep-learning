@@ -12,7 +12,12 @@ def run(
     num_heads: int = 8,
     m: int = 256,
     k: int = 32,
-    b: int = 8
+    b: int = 8,
+    batch_size: int = 128,
+    lr: float = 1e-3,
+    print_every: int = 400,
+    train_steps: int = 20000,
+    sample_length: int = 250
 ):
     tie_embeddings = True
     use_factorized_embeddings = False
@@ -20,17 +25,17 @@ def run(
 
     # Training settings (separate config for Trainer)
     train_cfg = TrainConfig(
-        batch_size=32,
-        learning_rate=1e-3,
-        print_every=400,
-        train_steps=15000,
-        sample_length=500,
+        batch_size=batch_size,
+        learning_rate=lr,
+        print_every=print_every,
+        train_steps=train_steps,
+        sample_length=sample_length,
         sample_prompts=[
             "Julius: ",
             "On thy hands he wraithed. ",
         ],
         char_level_tokenize=True,
-        use_amp=True,
+        use_amp=False,
     )
 
     # Block-level configs (copy D/C from transformer settings)
