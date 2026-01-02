@@ -94,8 +94,7 @@ class Trainer:
                 print(f"eval loss {eval_loss.item():.4f} (aux {eval_aux.item():.4f})")
                 self.print_sample(i, loss.item())
 
-            # periodic checkpointing independent of print cadence
-            if self.checkpoint_every and (i % self.checkpoint_every == 0):
+            if self.checkpoint_every and ((i+1) % self.checkpoint_every == 0):
                 self._maybe_save_checkpoint(loss, i, optimizer, silent=True)
 
 
