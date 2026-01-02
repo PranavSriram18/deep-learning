@@ -7,9 +7,10 @@ from typing import List, Tuple
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 class ShakespeareDataLoader(BaseLoader):
-    def __init__(self, batch_size: int, block_size: int):
+    def __init__(self, batch_size: int, block_size: int, train_frac: float = 0.9):
         self.batch_size = batch_size
         self.block_size = block_size
+        self.train_frac = train_frac
         with open("data/input.txt", 'r', encoding='utf8') as f:
             self.text = f.read()
         c = Counter(self.text)
@@ -42,6 +43,7 @@ class ShakespeareDataLoader(BaseLoader):
     def _create_train_test_splits(self):
         data = torch.tensor(self.encode(list(self.text)), dtype=torch.long)
         self.n = len(data)
-        self.num_train = int(0.9 * self.n)
+        self.num_train = int(self.train_frac * self.n)
         self._train_data = data[:self.num_train]
         self._val_data = data[self.num_train:]
+        print(f"total samples: {self.n}, train: {self.num_train}, val: {self.n - self.num_train}")

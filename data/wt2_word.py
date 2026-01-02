@@ -19,13 +19,11 @@ class WT2DataLoader(BaseLoader):
     def __init__(
         self,
         batch_size: int,
-        tokens_per_batch: int,
         vocab_size: int = 50_000,
         seed: int = 1337,
     ):
         super().__init__(
             batch_size=batch_size, 
-            tokens_per_batch=tokens_per_batch, 
             vocab_size=None
         )
 

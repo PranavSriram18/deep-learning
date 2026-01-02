@@ -14,6 +14,7 @@ def run_regular(
     num_heads: int = 8,
     b: int = 256,
     batch_size: int = 128,
+    train_frac: float = 0.9,
     lr: float = 1e-3,
     print_every: int = 400,
     train_steps: int = 20000,
@@ -64,7 +65,11 @@ def run_regular(
     if device.type == "cuda":
         print("GPU:", torch.cuda.get_device_name(0))
     
-    data_loader = ShakespeareDataLoader(batch_size=train_cfg.batch_size, block_size=C)
+    data_loader = ShakespeareDataLoader(
+        batch_size=train_cfg.batch_size,
+        block_size=C,
+        train_frac=train_frac,
+    )
     vocab_size = data_loader.vocab_size()
     print("Loaded data")
 

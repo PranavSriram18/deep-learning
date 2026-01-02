@@ -11,10 +11,9 @@ class DataMode(Enum):
 
 class BaseLoader:
     def __init__(
-        self, batch_size: int, tokens_per_batch: int, vocab_size: Optional[int]
+        self, batch_size: int, vocab_size: Optional[int]
     ):
         self._batch_size = batch_size
-        self._tokens_per_batch = tokens_per_batch
         self._vocab_size = vocab_size
 
     def vocab_size(self) -> int:
