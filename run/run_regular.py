@@ -50,7 +50,7 @@ def run_regular(
         m=1,                        # total experts; ignored
         k=1,                          # active experts; ignored
         b=b,                         # expert width
-        mlp_type=MLPType.MLP,
+        mlp_type=MLPType.DENSE,
     )
     block_cfg = BlockConfig(
         mlp_config=mlp_cfg,
@@ -107,4 +107,3 @@ def run_regular(
 
 if __name__=="__main__":
     run_regular()
-    
