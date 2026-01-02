@@ -190,7 +190,7 @@ class SparseExpertV3(nn.Module):
 
         self.dtype = torch.float32
 
-        self.alpha = getattr(config, "write_scale", 1.0)
+        self.alpha = getattr(config, "lambda_coeff", 1.0)
         self.eps = getattr(config, "norm_eps", 1e-8)
 
         self.reader = SparseRead(self.D, self.m, self.b, dtype=self.dtype)

@@ -36,7 +36,7 @@ def run(
         sample_length=sample_length,
         sample_prompts=[
             "Julius: ",
-            "On thy hands he wraithed. ",
+            "A",
         ],
         char_level_tokenize=True,
         use_amp=False,
