@@ -15,3 +15,7 @@ class UnitColNorm(nn.Module):
         # Given a constrained Y, return an original so that forward(original) == Y.
         # For normalization, identity works: forward(Y) == Y already.
         return Y
+
+# Convention: any auxiliary loss exposed by layers should use this suffix in the aux dict.
+# The model will aggregate keys ending with this suffix and weight them via config.
+AUX_LOSS_SUFFIX = "aux_loss"

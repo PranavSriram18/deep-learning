@@ -1,5 +1,5 @@
 
-from models.transformer import AUX_LOSS_SUFFIX
+from layers.layer_utils import AUX_LOSS_SUFFIX
 import torch  # type: ignore
 from torch import nn  # type: ignore
 import torch.nn.functional as F  # type: ignore

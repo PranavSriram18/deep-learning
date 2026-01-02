@@ -1,5 +1,6 @@
 # nano_gpt/transformer_model.py
 from layers.transformer_block import TransformerBlock
+from layers.layer_utils import AUX_LOSS_SUFFIX
 from models.transformer_config import TransformerConfig
 import torch  # type: ignore
 import torch.nn as nn  # type: ignore
@@ -8,13 +9,6 @@ from typing import Any, Optional, Tuple
 
 
 torch.manual_seed(1337)
-
-#
-# Convention: Any auxiliary loss term surfaced by layers should be exposed
-# under keys with the suffix defined below. This enables the model to
-# aggregate and weight aux losses in a uniform way.
-#
-AUX_LOSS_SUFFIX = "layer_aux_loss"
 
 class TransformerModel(nn.Module):
     def __init__(self, config: TransformerConfig):
