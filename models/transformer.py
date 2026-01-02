@@ -101,6 +101,8 @@ class TransformerModel(nn.Module):
 
         # Auxiliary loss from blocks (0 when disabled)
         aux = self.aux_loss(aux_dict)
+        # Aggregate non-loss metrics across layers (mean over available layers)
+        self.last_metrics = self.aggregate_metrics(aux_dict)
         if targets is None:
             return logits, None, aux
 
@@ -123,6 +125,18 @@ class TransformerModel(nn.Module):
         # average auxiliary loss across blocks/layers to keep scale stable
         aux_mean = torch.stack([t.to(next(self.parameters()).device) for t in aux_terms]).mean()
         return weight * aux_mean
+
+    def aggregate_metrics(self, aux_dict: dict[str, Any]) -> dict[str, float]:
+        keys = ["num_low_scoring_experts", "num_near_dead_experts"]
+        out: dict[str, float] = {}
+        for metric in keys:
+            vals = []
+            for k, v in aux_dict.items():
+                if k.endswith(metric) and isinstance(v, torch.Tensor):
+                    vals.append(v.to(next(self.parameters()).device).float())
+            if vals:
+                out[metric] = torch.stack(vals).mean().item()
+        return out
 
     def generate(
         self, idx: torch.Tensor, max_new_tokens: int, greedy: bool = False

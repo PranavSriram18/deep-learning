@@ -114,12 +114,25 @@ class TopKAutoencodeInhibitor(nn.Module):
         captured_energy_proj = topk_vals.sum(dim=-1).mean()
         recon_energy = (x_hat * x_hat).sum(dim=-1).mean()
 
+        # Expert utilization stats based on selection counts
+        # Expected selections per expert if uniform: (k/m) * N
+        N = topk_idxs.size(0)
+        counts = torch.zeros(self.m, device=topk_idxs.device, dtype=torch.float32)
+        counts = counts.scatter_add(0, topk_idxs.reshape(-1), torch.ones_like(topk_idxs, dtype=torch.float32).reshape(-1))
+        expected = (self.k / float(self.m)) * float(N)
+        low_threshold = 0.1 * expected
+        near_dead_threshold = 0.01 * expected
+        num_low_scoring_experts = (counts <= low_threshold).sum().to(torch.float32)
+        num_near_dead_experts = (counts <= near_dead_threshold).sum().to(torch.float32)
+
         aux = {
             "captured_energy_proj": captured_energy_proj,
             "recon_energy": recon_energy,
             "uncaptured_energy": uncaptured_energy,
             "balance_entropy": balance_entropy,
             "topk_aux_loss": uncaptured_energy + 0.5 * (1. - balance_entropy),
+            "num_low_scoring_experts": num_low_scoring_experts,
+            "num_near_dead_experts": num_near_dead_experts,
         }
         return h_sparse, topk_idxs, aux
 

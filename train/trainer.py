@@ -80,7 +80,14 @@ class Trainer:
             self.scheduler.step()
 
             if (i % print_every == 0):
-                print(f"step {i} | train loss {loss.item():.4f} (aux {aux_loss.item():.4f}) | logits[0,-1,:5]={logits[0, -1, :5].detach().cpu().tolist()}")
+                metrics = getattr(self.model, "last_metrics", {}) or {}
+                near_dead = metrics.get("num_near_dead_experts", float("nan"))
+                low_score = metrics.get("num_low_scoring_experts", float("nan"))
+                print(
+                    f"step {i} | train loss {loss.item():.4f} (aux {aux_loss.item():.4f}) "
+                    f"| near_dead {near_dead:.2f} | low_scoring {low_score:.2f} "
+                    f"| logits[0,-1,:5]={logits[0, -1, :5].detach().cpu().tolist()}"
+                )
                 # Also report evaluation loss (single batch) with aux breakdown
                 with torch.no_grad():
                     Xv, Yv = self.loader.get_batch(DataMode.EVAL)
@@ -91,7 +98,13 @@ class Trainer:
                             _, eval_loss, eval_aux = self.model(Xv, Yv)
                     else:
                         _, eval_loss, eval_aux = self.model(Xv, Yv)
-                print(f"eval loss {eval_loss.item():.4f} (aux {eval_aux.item():.4f})")
+                eval_metrics = getattr(self.model, "last_metrics", {}) or {}
+                eval_near_dead = eval_metrics.get("num_near_dead_experts", float("nan"))
+                eval_low_score = eval_metrics.get("num_low_scoring_experts", float("nan"))
+                print(
+                    f"eval loss {eval_loss.item():.4f} (aux {eval_aux.item():.4f}) "
+                    f"| near_dead {eval_near_dead:.2f} | low_scoring {eval_low_score:.2f}"
+                )
                 self.print_sample(i, loss.item())
 
             if self.checkpoint_every and ((i+1) % self.checkpoint_every == 0):
