@@ -18,4 +18,4 @@ class UnitColNorm(nn.Module):
 
 # Convention: any auxiliary loss exposed by layers should use this suffix in the aux dict.
 # The model will aggregate keys ending with this suffix and weight them via config.
-AUX_LOSS_SUFFIX = "aux_loss"
+AUX_LOSS_SUFFIX = "layer_aux_loss"

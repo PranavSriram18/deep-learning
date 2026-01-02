@@ -77,7 +77,18 @@ class Trainer:
             self.scheduler.step()
 
             if (i % print_every == 0):
-                print(f"step {i} | loss {loss.item():.4f} (aux {aux_loss.item():.4f}) | logits[0,-1,:5]={logits[0, -1, :5].detach().cpu().tolist()}")
+                print(f"step {i} | train loss {loss.item():.4f} (aux {aux_loss.item():.4f}) | logits[0,-1,:5]={logits[0, -1, :5].detach().cpu().tolist()}")
+                # Also report evaluation loss (single batch) with aux breakdown
+                with torch.no_grad():
+                    Xv, Yv = self.loader.get_batch(DataMode.EVAL)
+                    Xv = Xv.to(self.device, non_blocking=True)
+                    Yv = Yv.to(self.device, non_blocking=True)
+                    if self.use_amp:
+                        with torch.amp.autocast(device_type="cuda"):
+                            _, eval_loss, eval_aux = self.model(Xv, Yv)
+                    else:
+                        _, eval_loss, eval_aux = self.model(Xv, Yv)
+                print(f"eval loss {eval_loss.item():.4f} (aux {eval_aux.item():.4f})")
                 self.print_sample(i, loss.item())
                 # self._maybe_save_checkpoint(loss, i) # TODO
 
