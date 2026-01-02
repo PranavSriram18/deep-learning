@@ -5,22 +5,19 @@ from models.transformer_config import TransformerConfig
 from layers.layer_config import BlockConfig, MLPConfig, AttentionConfig, AttentionType, MLPType
 from train.trainer import Trainer, TrainConfig
 
-def run(
+# Train a regular Transformer 
+
+def run_regular(
     D: int = 128,
     C: int = 64,
     L: int = 2,
     num_heads: int = 8,
-    m: int = 256,
-    k: int = 32,
-    b: int = 8,
+    b: int = 256,
     batch_size: int = 128,
     lr: float = 1e-3,
     print_every: int = 400,
     train_steps: int = 20000,
-    sample_length: int = 250,
-    aux_loss_weight: float = 0.5,
-    checkpoint_path: str|None = None,
-    checkpoint_every: int = 0
+    sample_length: int = 250
 ):
     tie_embeddings = True
     use_factorized_embeddings = False
@@ -39,8 +36,6 @@ def run(
         ],
         char_level_tokenize=True,
         use_amp=False,
-        checkpoint_path=checkpoint_path,
-        checkpoint_every=checkpoint_every
     )
 
     # Block-level configs (copy D/C from transformer settings)
@@ -52,10 +47,10 @@ def run(
     )
     mlp_cfg = MLPConfig(
         D=D,
-        m=m,                        # total experts
-        k=k,                          # active experts
+        m=1,                        # total experts; ignored
+        k=1,                          # active experts; ignored
         b=b,                         # expert width
-        mlp_type=MLPType.SPARSE_EXPERT_V3,
+        mlp_type=MLPType.MLP,
     )
     block_cfg = BlockConfig(
         mlp_config=mlp_cfg,
@@ -83,7 +78,7 @@ def run(
         use_factorized_embeddings=use_factorized_embeddings,
         vocab_embed_dim=vocab_embed_dim,
         tie_embeddings=tie_embeddings,
-        aux_loss_weight=aux_loss_weight,
+        aux_loss_weight=0.,
     )
 
     model = TransformerModel(config=transformer_cfg).to(device)
@@ -111,4 +106,5 @@ def run(
     trainer.print_sample()
 
 if __name__=="__main__":
-    run()
+    run_regular()
+    

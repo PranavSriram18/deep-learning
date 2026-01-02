@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-from dataclasses import dataclass
+from dataclasses import dataclass, asdict
 from typing import Dict, Optional
 
 from data.base_loader import BaseLoader, DataMode
@@ -16,6 +16,8 @@ class TrainConfig:
     sample_prompts: list[str]
     char_level_tokenize: bool
     use_amp: bool
+    checkpoint_path: Optional[str] = None
+    checkpoint_every: int = 0  # 0 disables periodic checkpointing
 
 class Trainer:
     def __init__(
@@ -24,7 +26,6 @@ class Trainer:
         data_loader: BaseLoader,
         train_config: TrainConfig,
         device: Optional[torch.device] = None,
-        checkpoint_path: Optional[str] = None
     ):
         # Resolve and store device
         self.device = device or next(model.parameters()).device
@@ -39,7 +40,9 @@ class Trainer:
         # AMP scaler (no-op when enabled=False)
         self.scaler = torch.amp.GradScaler(enabled=self.use_amp)
 
-        self.checkpoint_path: Optional[str] = checkpoint_path
+        self.checkpoint_path: Optional[str] = train_config.checkpoint_path
+        self.checkpoint_every: int = int(train_config.checkpoint_every or 0)
+        self._train_config = train_config
 
     def train(self, lr: float, batch_size: int, steps: int, print_every: int) -> None:
         print("In Trainer::train", flush=True)
@@ -90,7 +93,10 @@ class Trainer:
                         _, eval_loss, eval_aux = self.model(Xv, Yv)
                 print(f"eval loss {eval_loss.item():.4f} (aux {eval_aux.item():.4f})")
                 self.print_sample(i, loss.item())
-                # self._maybe_save_checkpoint(loss, i) # TODO
+                self._maybe_save_checkpoint(loss, i, optimizer)
+            # periodic checkpointing independent of print cadence
+            if self.checkpoint_every and (i % self.checkpoint_every == 0):
+                self._maybe_save_checkpoint(loss, i, optimizer, silent=True)
 
     @torch.no_grad()
     def estimate_loss(self, eval_iters: int) -> Dict[str, float]:
@@ -123,15 +129,30 @@ class Trainer:
             text = " ".join(out) if is_word_level else "".join(out)
             print(f"\n{text}\n", flush=True)
 
-    def _maybe_save_checkpoint(self, loss: torch.Tensor, i: int):
-        # TODO - fix
-        model_checkpoint_method = getattr(self.model, "checkpoint_payload", None)
-        if self.checkpoint_path and callable(model_checkpoint_method):
-            payload = model_checkpoint_method()
-            extra_meta = {
-                "step": int(i),
-                "loss": float(loss.item()),
-                "t": int(getattr(self.model, "t", -1)),
-            }
-            payload |= extra_meta
+    def _maybe_save_checkpoint(self, loss: torch.Tensor, i: int, optimizer: torch.optim.Optimizer, silent: bool = False):
+        if not self.checkpoint_path:
+            return
+        extra_state_fn = getattr(self.model, "extra_checkpoint_state", None)
+        extra: dict = {}
+        if callable(extra_state_fn):
+            try:
+                extra = extra_state_fn() or {}
+            except Exception:
+                extra = {}
+        payload: dict = {
+            "model_state": self.model.state_dict(),
+            "optimizer_state": optimizer.state_dict(),
+            "scheduler_state": getattr(self, "scheduler", None).state_dict() if hasattr(self, "scheduler") else None,
+            "model_config": asdict(self.model.config) if hasattr(self.model, "config") else None,
+            "train_config": asdict(self._train_config) if self._train_config else None,
+            "step": int(i),
+            "loss": float(loss.item()),
+        }
+        payload |= extra
+        try:
             torch.save(payload, self.checkpoint_path)
+            if not silent:
+                print(f"Saved checkpoint to {self.checkpoint_path} at step {i}")
+        except Exception as e:
+            if not silent:
+                print(f"Warning: failed to save checkpoint to {self.checkpoint_path}: {e}")

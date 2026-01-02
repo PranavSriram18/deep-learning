@@ -48,6 +48,20 @@ class TransformerModel(nn.Module):
         )
         self.ln_f = nn.LayerNorm(self.D)
 
+    def extra_checkpoint_state(self) -> dict:
+        """
+        Models can override/extend this to save additional state alongside weights.
+        Return a flat dict; it will be merged into the checkpoint payload.
+        """
+        # Example: include any relevant scalar attributes if present
+        extra = {}
+        if hasattr(self, "t"):
+            try:
+                extra["t"] = int(getattr(self, "t"))
+            except Exception:
+                pass
+        return extra
+
     def forward(
         self,
         idx: torch.Tensor,                 # (B, T) long
