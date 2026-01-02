@@ -1,4 +1,4 @@
-from data.base_loader import BaseLoader
+from data.base_loader import BaseLoader, DataMode
 import torch  # type: ignore
 import torch.nn as nn  # type: ignore
 from collections import Counter
@@ -29,11 +29,11 @@ class ShakespeareDataLoader(BaseLoader):
     def decode(self, l: List[int]) -> str:
         return ''.join(self._itos[i] for i in l)
 
-    def get_batch(self, split: str) -> Tuple[torch.Tensor, torch.Tensor]:
+    def get_batch(self, mode: DataMode) -> Tuple[torch.Tensor, torch.Tensor]:
         """
         TODO: document shapes of x, y
         """
-        data = self._train_data if split == 'train' else self._val_data
+        data = self._train_data if mode == DataMode.TRAIN else self._val_data
         ix = torch.randint(len(data) - self.block_size, (self.batch_size,))
         x = torch.stack([data[i:i+self.block_size] for i in ix])
         y = torch.stack([data[i+1:i+self.block_size+1] for i in ix])
