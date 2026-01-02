@@ -14,7 +14,7 @@ torch.manual_seed(1337)
 # under keys with the suffix defined below. This enables the model to
 # aggregate and weight aux losses in a uniform way.
 #
-AUX_LOSS_SUFFIX = "aux_loss"
+AUX_LOSS_SUFFIX = "layer_aux_loss"
 
 class TransformerModel(nn.Module):
     def __init__(self, config: TransformerConfig):

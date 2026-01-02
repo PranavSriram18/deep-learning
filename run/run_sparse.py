@@ -17,7 +17,8 @@ def run(
     lr: float = 1e-3,
     print_every: int = 400,
     train_steps: int = 20000,
-    sample_length: int = 250
+    sample_length: int = 250,
+    aux_loss_weight: float = 0.5
 ):
     tie_embeddings = True
     use_factorized_embeddings = False
@@ -78,7 +79,7 @@ def run(
         use_factorized_embeddings=use_factorized_embeddings,
         vocab_embed_dim=vocab_embed_dim,
         tie_embeddings=tie_embeddings,
-        aux_loss_weight=0.5,
+        aux_loss_weight=aux_loss_weight,
     )
 
     model = TransformerModel(config=transformer_cfg).to(device)

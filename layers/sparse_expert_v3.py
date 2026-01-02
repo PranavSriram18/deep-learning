@@ -1,4 +1,5 @@
 
+from models.transformer import AUX_LOSS_SUFFIX
 import torch  # type: ignore
 from torch import nn  # type: ignore
 import torch.nn.functional as F  # type: ignore
@@ -118,7 +119,7 @@ class TopKAutoencodeInhibitor(nn.Module):
             "recon_energy": recon_energy,
             "uncaptured_energy": uncaptured_energy,
             "balance_entropy": balance_entropy,
-            "aux_loss": uncaptured_energy + 0.1 * (1. - balance_entropy),
+            "topk_aux_loss": uncaptured_energy + 0.5 * (1. - balance_entropy),
         }
         return h_sparse, topk_idxs, aux
 
@@ -137,14 +138,17 @@ class DenseWrite(nn.Module):
         self.b = b
         self.dtype = dtype
 
-        # U: (m, D, b)
+        # U: (m, D, b) with unit norm along D for each writer vector
         self.U = nn.Parameter(torch.randn(self.m, self.D, self.b, dtype=self.dtype))
+        parametrize.register_parametrization(self, "U", UnitColNorm(dim=1))
 
-    def forward(self, h_sparse: torch.Tensor, topk_idxs: torch.Tensor) -> torch.Tensor:
+    def forward(self, h_sparse: torch.Tensor, topk_idxs: torch.Tensor) -> tuple[torch.Tensor, dict[str, torch.Tensor]]:
         """
         h_sparse: (N, k, b)
         topk_idxs: (N, k)
-        returns writes: (N, D)
+        returns:
+          writes: (N, D)
+          aux: dict including writer_aux_loss: scalar
         """
         N, k, b = h_sparse.shape
         if b != self.b:
@@ -152,7 +156,18 @@ class DenseWrite(nn.Module):
 
         idx_U = topk_idxs.view(N, k, 1, 1).expand(-1, -1, self.D, self.b)  # (N, k, D, b)
         U_active = torch.gather(self.U.unsqueeze(0).expand(N, -1, -1, -1), 1, idx_U)
-        return torch.einsum("nkdb,nkb->nd", U_active, h_sparse)
+        # Forward write: U_S h  -> (N, D)
+        writes = torch.einsum("nkdb,nkb->nd", U_active, h_sparse)
+
+        # Autoencode in h-space with stopgrad on h:
+        # h_hat = U_S^T (U_S h), compare to h (detached)
+        # U_S^T writes: (N, k, b)
+        h_recon = torch.einsum("nkdb,nd->nkb", U_active, writes)
+        h_target = h_sparse.detach()
+        writer_recon_loss = (h_recon - h_target).pow(2).mean()
+
+        aux = {"writer_aux_loss": writer_recon_loss}
+        return writes, aux
 
 
 class SparseExpertV3(nn.Module):
@@ -200,18 +215,16 @@ class SparseExpertV3(nn.Module):
         h_all = self.reader(x_flat)  # (N, m, b)
 
         # 2) Lateral inhibition + aux loss (autoencode with V)
-        h_sparse, topk_idxs, aux = self.inhibitor(x_flat, h_all, self.reader.V)
+        h_sparse, topk_idxs, topk_aux = self.inhibitor(x_flat, h_all, self.reader.V)
 
         # 3) Write
-        writes = self.writer(h_sparse, topk_idxs)  # (N, D)
+        writes, writer_aux = self.writer(h_sparse, topk_idxs)  # (N, D), aux
 
         # Residual update + normalize
         x_out = x_flat + (self.alpha * writes)
         x_out = F.normalize(x_out, p=2, dim=-1, eps=self.eps)
 
         x_out = x_out.view(*input_shape)
-        aux = dict(aux)
-        aux["mean_write_norm"] = writes.norm(dim=-1).mean()
-        aux["mean_x_norm_pre"] = x_flat.norm(dim=-1).mean()
-        aux["mean_x_norm_post"] = x_out.reshape(-1, self.D).norm(dim=-1).mean()
+        aux: dict = topk_aux | writer_aux
+        aux[AUX_LOSS_SUFFIX] = aux["topk_aux_loss"] + aux["writer_aux_loss"]
         return x_out, aux
