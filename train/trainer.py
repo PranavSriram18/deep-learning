@@ -93,30 +93,11 @@ class Trainer:
                         _, eval_loss, eval_aux = self.model(Xv, Yv)
                 print(f"eval loss {eval_loss.item():.4f} (aux {eval_aux.item():.4f})")
                 self.print_sample(i, loss.item())
-                self._maybe_save_checkpoint(loss, i, optimizer)
+
             # periodic checkpointing independent of print cadence
             if self.checkpoint_every and (i % self.checkpoint_every == 0):
                 self._maybe_save_checkpoint(loss, i, optimizer, silent=True)
 
-    @torch.no_grad()
-    def estimate_loss(self, eval_iters: int) -> Dict[str, float]:
-        out: Dict[str, float] = {}
-        self.model.eval()
-        for split in [DataMode.TRAIN, DataMode.EVAL]:
-            losses = torch.zeros(eval_iters)  # keep on CPU; we store .item() anyway
-            for k in range(eval_iters):
-                X, Y = self.loader.get_batch(split)
-                X = X.to(self.device, non_blocking=True)
-                Y = Y.to(self.device, non_blocking=True)
-                if self.use_amp:
-                    with torch.amp.autocast(device_type="cuda"):
-                        _, loss, aux_loss = self.model(X, Y)
-                else:
-                    _, loss, aux_loss = self.model(X, Y)
-                losses[k] = float(loss.item())
-            out[split] = float(losses.mean().item())
-        self.model.train()
-        return out
 
     def print_sample(self, it: int | None = None, loss: float | None = None):
         if it is not None:

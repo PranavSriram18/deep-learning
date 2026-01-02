@@ -19,8 +19,8 @@ def run(
     train_steps: int = 20000,
     sample_length: int = 250,
     aux_loss_weight: float = 0.5,
-    checkpoint_path: str|None = None,
-    checkpoint_every: int = 0
+    checkpoint_path: str|None = "checkpoints/sparse_model.pt",
+    checkpoint_every: int = 5000
 ):
     tie_embeddings = True
     use_factorized_embeddings = False
