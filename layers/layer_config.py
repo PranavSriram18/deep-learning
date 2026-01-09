@@ -22,7 +22,9 @@ class MLPConfig:
     b: int  # expert width
     mlp_type: MLPType
     k_f: int = 0  # fixed experts
-    lambda_coeff: float = 1.   # layer forward returns x + lambda_coeff * mlp(x)
+    lambda_coeff: float = 1.   # layer forward returns normalize(x + lambda_coeff * mlp(x))
+    balance_entropy_coeff: float = 0.0  # coefficient for balance-entropy term (default 0)
+    selection_relu: bool = False  # if True, select top-k based on relu(h) energy instead of h^2
 
     @staticmethod
     def dense_default(D: int = 256):

@@ -6,7 +6,7 @@ import torch.nn.functional as F  # type: ignore
 import torch.nn.utils.parametrize as parametrize  # type: ignore
 
 from layers.layer_config import MLPConfig
-from layers.layer_utils import UnitColNorm
+from layers.layer_utils import UnitColNorm, UnitColNormPadded
 
 
 class SparseRead(nn.Module):
@@ -45,13 +45,15 @@ class TopKAutoencodeInhibitor(nn.Module):
     Aux loss: ||x - x_hat||^2 (mean over batch).
     """
 
-    def __init__(self, D: int, m: int, b: int, k: int, eps: float = 1e-8):
+    def __init__(self, D: int, m: int, b: int, k: int, eps: float = 1e-8, balance_entropy_coeff: float = 0.0, selection_relu: bool = False):
         super().__init__()
         self.D = D
         self.m = m
         self.b = b
         self.k = k
         self.eps = eps
+        self.balance_entropy_coeff = balance_entropy_coeff
+        self.selection_relu = selection_relu
 
         if not (1 <= self.k <= self.m):
             raise ValueError(f"k must satisfy 1 <= k <= m, got k={k}, m={m}")
@@ -85,7 +87,12 @@ class TopKAutoencodeInhibitor(nn.Module):
           aux: dict of scalars/tensors
         """
         # Energy per expert: (N, m)
-        energy = (h_all * h_all).sum(dim=-1)
+        # Optionally use ReLU(h) before energy calculation for selection
+        if self.selection_relu:
+            h_eff = F.relu(h_all)
+        else:
+            h_eff = h_all
+        energy = (h_eff * h_eff).sum(dim=-1)
 
         # Top-k experts by energy
         topk_vals, topk_idxs = energy.topk(self.k, dim=-1)  # (N, k)
@@ -130,18 +137,18 @@ class TopKAutoencodeInhibitor(nn.Module):
             "recon_energy": recon_energy,
             "uncaptured_energy": uncaptured_energy,
             "balance_entropy": balance_entropy,
-            "topk_aux_loss": uncaptured_energy + 0.5 * (1. - balance_entropy),
+            "topk_aux_loss": uncaptured_energy + self.balance_entropy_coeff * (1. - balance_entropy),
             "num_low_scoring_experts": num_low_scoring_experts,
             "num_near_dead_experts": num_near_dead_experts,
         }
+
+        # TODO: support replacement operator form
         return h_sparse, topk_idxs, aux
 
 
 class DenseWrite(nn.Module):
     """
     Write module: sparse (k, b) activations -> dense R^D using expert-specific U_i.
-
-    U is left unconstrained initially.
     """
 
     def __init__(self, D: int, m: int, b: int, dtype: torch.dtype = torch.float32):
@@ -151,9 +158,11 @@ class DenseWrite(nn.Module):
         self.b = b
         self.dtype = dtype
 
-        # U: (m, D, b) with unit norm along D for each writer vector
-        self.U = nn.Parameter(torch.randn(self.m, self.D, self.b, dtype=self.dtype))
-        parametrize.register_parametrization(self, "U", UnitColNorm(dim=1))
+        # U_raw: (m, D+1, b) with unit norm along (D+1) per column via parametrization.
+        # The effective writer uses only the first D coordinates; the last coord is a dummy
+        # ensuring the first D coords have norm <= 1.
+        self.U = nn.Parameter(torch.randn(self.m, self.D + 1, self.b, dtype=self.dtype))
+        parametrize.register_parametrization(self, "U", UnitColNormPadded(dim=1))
 
     def forward(self, h_sparse: torch.Tensor, topk_idxs: torch.Tensor) -> tuple[torch.Tensor, dict[str, torch.Tensor]]:
         """
@@ -167,8 +176,10 @@ class DenseWrite(nn.Module):
         if b != self.b:
             raise ValueError(f"Expected b={self.b}, got b={b}")
 
-        idx_U = topk_idxs.view(N, k, 1, 1).expand(-1, -1, self.D, self.b)  # (N, k, D, b)
-        U_active = torch.gather(self.U.unsqueeze(0).expand(N, -1, -1, -1), 1, idx_U)
+        # Gather along expert dimension, then truncate to first D coords
+        idx_U = topk_idxs.view(N, k, 1, 1).expand(-1, -1, self.D + 1, self.b)  # (N, k, D+1, b)
+        U_active_full = torch.gather(self.U.unsqueeze(0).expand(N, -1, -1, -1), 1, idx_U)  # (N, k, D+1, b)
+        U_active = U_active_full[:, :, :self.D, :]  # (N, k, D, b)
         # Forward write: U_S h  -> (N, D)
         writes = torch.einsum("nkdb,nkb->nd", U_active, h_sparse)
 
@@ -191,7 +202,7 @@ class SparseExpertV3(nn.Module):
       x_in -> normalize -> h_all = V^T x
       (h_sparse, idxs, aux) = inhibitor(x, h_all, V)
       writes = U_S h_sparse
-      x_out = normalize(x + alpha * writes)
+      x_out = normalize(x + lambda_coeff * writes)
     """
 
     def __init__(self, config: MLPConfig):
@@ -203,11 +214,21 @@ class SparseExpertV3(nn.Module):
 
         self.dtype = torch.float32
 
-        self.alpha = getattr(config, "lambda_coeff", 1.0)
+        self.lambda_coeff = getattr(config, "lambda_coeff", 1.0)
         self.eps = getattr(config, "norm_eps", 1e-8)
+        self.balance_entropy_coeff = getattr(config, "balance_entropy_coeff", 0.0)
+        self.selection_relu = getattr(config, "selection_relu", False)
 
         self.reader = SparseRead(self.D, self.m, self.b, dtype=self.dtype)
-        self.inhibitor = TopKAutoencodeInhibitor(self.D, self.m, self.b, self.k, eps=self.eps)
+        self.inhibitor = TopKAutoencodeInhibitor(
+            self.D,
+            self.m,
+            self.b,
+            self.k,
+            eps=self.eps,
+            balance_entropy_coeff=self.balance_entropy_coeff,
+            selection_relu=self.selection_relu,
+        )
         self.writer = DenseWrite(self.D, self.m, self.b, dtype=self.dtype)
 
     def forward(self, x: torch.Tensor) -> tuple[torch.Tensor, dict[str, torch.Tensor]]:
@@ -234,7 +255,7 @@ class SparseExpertV3(nn.Module):
         writes, writer_aux = self.writer(h_sparse, topk_idxs)  # (N, D), aux
 
         # Residual update + normalize
-        x_out = x_flat + (self.alpha * writes)
+        x_out = x_flat + (self.lambda_coeff * writes)
         x_out = F.normalize(x_out, p=2, dim=-1, eps=self.eps)
 
         x_out = x_out.view(*input_shape)
